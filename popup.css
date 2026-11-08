@@ -1,0 +1,230 @@
+/* Popup Styles for LinkedIn Doomscroll Inferno */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 320px;
+  background-color: #FFFDF9;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1A0500;
+  padding: 16px;
+  user-select: none;
+}
+
+.popup-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Header */
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 2px dashed #E2D9D2;
+}
+
+.header-flame-icon {
+  font-size: 28px;
+  background: #FFE5D9;
+  border: 2px solid #1A0500;
+  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 2px 0px #1A0500;
+}
+
+.header-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: #1A0500;
+  line-height: 1.2;
+}
+
+.header-subtitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: #FF5500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Status Card */
+.status-card {
+  background: #FFFFFF;
+  border: 2px solid #1A0500;
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 3px 3px 0px #1A0500;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #6B5B57;
+}
+
+.status-badge {
+  font-size: 11px;
+  font-weight: 800;
+  background: #FFF2D1;
+  color: #D31B00;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #1A0500;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 10px;
+  background: #ECE5DE;
+  border: 1.5px solid #1A0500;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #FFC800, #FF5500, #E60000);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.counter-display {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1A0500;
+  text-align: right;
+}
+
+/* Settings Group */
+.settings-group {
+  background: #FFFFFF;
+  border: 2px solid #1A0500;
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 3px 3px 0px #1A0500;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.setting-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #E62200;
+  cursor: pointer;
+}
+
+.setting-row-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.threshold-number {
+  color: #E62200;
+  font-weight: 900;
+}
+
+input[type="range"] {
+  accent-color: #E62200;
+  cursor: pointer;
+  height: 6px;
+}
+
+.slider-hint {
+  font-size: 10px;
+  color: #8C7B75;
+}
+
+/* Actions Group */
+.actions-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #1A0500;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 3px 3px 0px #1A0500;
+  transition: all 0.15s ease;
+}
+
+.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #1A0500;
+}
+
+.btn-primary {
+  background: #FF6600;
+  color: #FFFFFF;
+}
+
+.btn-primary:hover {
+  background: #E65500;
+}
+
+.btn-secondary {
+  background: #F0F4F8;
+  color: #1A0500;
+}
+
+.btn-secondary:hover {
+  background: #E2E8F0;
+}
+
+/* Footer */
+.popup-footer {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: #A09088;
+  padding-top: 4px;
+}

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkedIn Doomscroll Inferno - Interactive Demo Feed</title>
+  <link rel="stylesheet" href="content.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #F3F2EF;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #191919;
+      padding-top: 60px;
+      padding-bottom: 120px;
+    }
+
+    /* LinkedIn Header Mock */
+    .mock-navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 52px;
+      background: #FFFFFF;
+      border-bottom: 1px solid #E0DFDC;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 1000;
+    }
+
+    .mock-nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mock-logo {
+      background: #0A66C2;
+      color: white;
+      font-weight: 900;
+      font-size: 20px;
+      border-radius: 4px;
+      padding: 2px 8px;
+    }
+
+    .mock-search {
+      background: #EDF3F8;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      width: 240px;
+    }
+
+    .demo-callout-pill {
+      background: #FFF0EB;
+      color: #E62200;
+      border: 1.5px solid #E62200;
+      border-radius: 999px;
+      padding: 4px 14px;
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Feed Layout */
+    .feed-container {
+      max-width: 550px;
+      margin: 20px auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 0 12px;
+    }
+
+    /* Post Composer */
+    .mock-composer {
+      background: #FFFFFF;
+      border: 1px solid #E0DFDC;
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .composer-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .mock-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #CCE4F7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .mock-start-post-btn {
+      flex: 1;
+      height: 44px;
+      border-radius: 999px;
+      border: 1px solid #B0B0B0;
+      background: #FFFFFF;
+      text-align: left;
+      padding: 0 16px;
+      color: #5E5E5E;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .mock-start-post-btn:hover {
+      background: #F3F2EF;
+    }
+
+    .composer-buttons {
+      display: flex;
+      justify-content: space-around;
+      border-top: 1px solid #EFEFEF;
+      padding-top: 10px;
+    }
+
+    .composer-tool-btn {
+      background: none;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      color: #5E5E5E;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 4px;
+    }
+
+    .composer-tool-btn:hover {
+      background: #F3F2EF;
+    }
+
+    /* Mock Post Card */
+    .mock-post {
+      background: #FFFFFF;
+      border: 1px solid #E0DFDC;
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      position: relative;
+    }
+
+    .post-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .post-author-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .post-author-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #191919;
+    }
+
+    .post-author-headline {
+      font-size: 12px;
+      color: #5E5E5E;
+    }
+
+    .post-time {
+      font-size: 11px;
+      color: #8C8C8C;
+    }
+
+    .post-badge-number {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: #F3F2EF;
+      color: #5E5E5E;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid #D0CFCD;
+    }
+
+    .post-body {
+      font-size: 14px;
+      line-height: 1.5;
+      color: #191919;
+      margin-bottom: 14px;
+      white-space: pre-line;
+    }
+
+    .post-actions {
+      display: flex;
+      justify-content: space-around;
+      border-top: 1px solid #EFEFEF;
+      padding-top: 10px;
+      color: #5E5E5E;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .post-action-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #5E5E5E;
+      padding: 6px 12px;
+      border-radius: 4px;
+    }
+
+    .post-action-btn:hover {
+      background: #F3F2EF;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Mock Navigation Bar -->
+  <header class="mock-navbar">
+    <div class="mock-nav-brand">
+      <div class="mock-logo">in</div>
+      <input type="text" class="mock-search" placeholder="Search" readonly>
+    </div>
+    <div class="demo-callout-pill">
+      🔥 Scroll down 10 posts to watch the flames consume the page!
+    </div>
+  </header>
+
+  <!-- Feed Content -->
+  <main class="feed-container">
+
+    <!-- Composer Box -->
+    <section class="mock-composer">
+      <div class="composer-top">
+        <div class="mock-avatar">🧑‍💻</div>
+        <button class="mock-start-post-btn" id="mock-start-post">Start a post, contribute to society...</button>
+      </div>
+      <div class="composer-buttons">
+        <button class="composer-tool-btn">📷 Media</button>
+        <button class="composer-tool-btn">📅 Event</button>
+        <button class="composer-tool-btn">✍️ Write article</button>
+      </div>
+    </section>
+
+    <!-- Post 1 -->
+    <article class="mock-post" data-post-id="demo-post-1">
+      <span class="post-badge-number">Post #1</span>
+      <div class="post-header">
+        <div class="mock-avatar">📈</div>
+        <div class="post-author-info">
+          <span class="post-author-name">Chad Synergy</span>
+          <span class="post-author-headline">Chief Thought Disruptor | Forbes 30 Under 30 Reject</span>
+          <span class="post-time">1h • 🌐</span>
+        </div>
+      </div>
+      <div class="post-body">I woke up at 3:15 AM today.
+Not to work out. Not to meditate.
+I woke up to stare at my ceiling and manifest 400% quarterly growth.
+
+Most founders don't have what it takes to wake up before their dreams do.
+Agree? Thoughts? 👇</div>
+      <div class="post-actions">
+        <button class="post-action-btn">👍 Like</button>
+        <button class="post-action-btn">💬 Comment</button>
+        <button class="post-action-btn">🔄 Repost</button>
+      </div>
+    </article>
+
+    <!-- Post 2 -->
+    <article class="mock-post" data-post-id="demo-post-2">
+      <span class="post-badge-number">Post #2</span>
+      <div class="post-header">
+        <div class="mock-avatar">🐶</div>
+        <div class="post-author-info">
+          <span class="post-author-name">Sarah B2B</span>
+          <span class="post-author-headline">Enterprise SaaS Queen | I help hyper-growth startups scale</span>
+          <span class="post-time">2h • 🌐</span>
+        </div>
+      </div>
+      <div class="post-body">What my golden retriever taught me about enterprise pipeline velocity:
+
+1. Consistency: He barks at the mailman every day without fail.
+2. Follow-up: He brings back the tennis ball 47 times in a row.
+3. Resilience: Even when told "No", he stares expectantly.
+
+Drop an emoji if your pet is secretly a VP of Sales. 🐕💼</div>
+      <div class="post-actions">
+        <button class="post-action-btn">👍 Like</button>
+        <button class="post-action-btn">💬 Comment</button>
+        <button class="post-action-btn">🔄 Repost</button>
+      </div>
+    </article>
+
+    <!-- Post 3 -->
+    <article class="mock-post" data-post-id="demo-post-3">
+      <span class="post-badge-number">Post #3</span>
+      <div class="post-header">
+        <div class="mock-avatar">☕</div>
+        <div class="post-author-info">
+          <span class="post-author-name">Liam Grindset</span>
+          <span class="post-author-headline">Keynote Speaker | 12x Hustler | Cold Brew Evangelist</span>
+          <span class="post-time">3h • 🌐</span>
+        </div>
+      </div>
+      <div class="post-body">Stop taking lunch breaks.
+While you're chewing a turkey sandwich, your competitors are closing 7-figure seed rounds.
+
+I eat while typing with one hand and lifting a 25lb dumbbell with the other.
+Discipline is a lifestyle. 💯</div>
+      <div class="post-actions">
+        <button class="post-action-btn">👍 Like</button>
+        <button class="post-action-btn">💬 Comment</button>
+        <button class="post-action-btn">🔄 Repost</button>
+      </div>
+    </article>
+
+    <!-- Post 4 -->
+    <article class="mock-post" data-post-id="demo-post-4">
+      <span class="post-badge-number">Post #4</span>
+      <div class="post-header">
+        <div class="mock-avatar">🚀</div>
+        <div class="post-author-info">
+          <span class="post-author-name">Elena Vanguard</span>
+          <span class="post-author-headline">AI Whisperer | Prompt Poet | Changing the world one token at a time</span>
+          <span class="post-time">4h • 🌐</span>
+        </div>
+      </div>
+      <div class="post-body">AI won't replace you.
+Someone using AI to generate inspirational LinkedIn posts will replace you.
+
+Here are 7 prompts to turn your daily routine into a viral 12-slide carousel:
+(Link in comments!) 🤖✨</div>
+      <div class="post-actions">
+        <button class="post-action-btn">👍 Like</button>
+        <button class="post-action-btn">💬 Comment</button>
+        <button class="post-action-btn">🔄 Repost</button>
+      </div>
+    </article>
+
+    <!-- Post 5 -->
+    <article class="mock-post" data-post-id="demo-post-5">
+      <span class="post-badge-number">Post #5</span>
+      <div class="post-header">
+        <div class="mock-avatar">👔</div>
+        <div class="post-author-info">
+          <span class="post-author-name">Richard Executive</span>
+          <span class="post-author-headline">Managing Partner | Fractional C-Suite Enthusiast</span>
+          <span class="post-time">5h • 🌐</span>
+        </div>
+      </div>
+      <div class="post-body">I just turned down a \$5,000,000 acquisition offer.
+Why?
+Because the buyer didn't share my core vision of building authentic relationships.
+
+Never compromise your soul for money. (Unless it's \$10M, then we can talk).
+Thoughts? 👇</div>
+      <div class="post-actions">
+        <button class="post-action-btn">👍 Like</button>
+        <button class="post-action-btn">💬 Comment</button>
+        <button class="post-action-btn">🔄 Repost</button>
+      </div>
+    </article>
+
+    <!-- Post 6 -->
+    <article class="mock-post" data-post-id="demo-post-6">
+      <span class="post-badge-number">Post #6</span>
+      <div class="post-header">
+        <div class="mock-avatar">🔥</div>
+        <div class="post-author-info">
+          <span class="post-author-name">Feed Warning</span>
+          <span class="post-author-headline">The Temperature is Rising...</span>
+          <span class="post-time">Notice the flames expanding below?</span>
+        </div>
+      </div>
+      <div class="post-body">Notice how the cartoon flames at the bottom of the screen have grown?
+You are now 6 posts deep into the algorithm.
+Your dopamine receptors are starting to sizzle! 🔥</div>
+      <div class="post-actions">
+        <button class="post-action-btn">👍 Like</button>
+        <button class="post-action-btn">💬 Comment</button>
+        <button class="post-action-btn">🔄 Repost</button>
+      </div>
+    </article>
+
+    <!-- Post 7 -->
+    <article class="mock-post" data-post-id="demo-post-7">
+      <span class="post-badge-number">Post #7</span>
+      <div class="post-header">
+        <div class="mock-avatar">🍕</div>
+        <div class="post-author-info">
+          <span class="post-author-name">Brad Pizza-Party</span>
+          <span class="post-author-headline">Head of People & Culture | Free Bagels on Alternate Fridays</span>
+          <span class="post-time">6h • 🌐</span>
+        </div>
+      </div>
+      <div class="post-body">Employees don't want salary increases.
+They want psychological safety, an inspiring mission statement, and warm pepperoni pizza during mandatory 7 PM all-hands meetings.
+
+Retweet if you value culture over compensation! 🍕🎉</div>
+      <div class="post-actions">
+        <button class="post-action-btn">👍 Like</button>
+        <button class="post-action-btn">💬 Comment</button>
+        <button class="post-action-btn">🔄 Repost</button>
+      </div>
+    </article>
+
+    <!-- Post 8 -->
+    <article class="mock-post" data-post-id="demo-post-8">
+      <span class="post-badge-number">Post #8</span>
+      <div class="post-header">
+        <div class="mock-avatar">🥑</div>
+        <div class="post-author-info">
+          <span class="post-author-name">Chloe Wellness</span>
+          <span class="post-author-headline">Corporate Mindfulness Guru | Breathing Strategist</span>
+          <span class="post-time">7h • 🌐</span>
+        </div>
+      </div>
+      <div class="post-body">I spent 4 hours today optimizing my calendar colors.
+Blue for strategic deep work.
+Orange for client fire drills.
+Purple for silent introspection.
+
+My calendar is now a work of modern art. Productivity isn't doing work—it's preparing to do work. 🎨🧘</div>
+      <div class="post-actions">
+        <button class="post-action-btn">👍 Like</button>
+        <button class="post-action-btn">💬 Comment</button>
+        <button class="post-action-btn">🔄 Repost</button>
+      </div>
+    </article>
+
+    <!-- Post 9 -->
+    <article class="mock-post" data-post-id="demo-post-9">
+      <span class="post-badge-number">Post #9</span>
+      <div class="post-header">
+        <div class="mock-avatar">⚠️</div>
+        <div class="post-author-info">
+          <span class="post-author-name">Almost Inferno</span>
+          <span class="post-author-headline">Danger Zone | 1 Post Away From Total Meltdown</span>
+          <span class="post-time">Flames at 85% height!</span>
+        </div>
+      </div>
+      <div class="post-body">Post #9! Look at the flames licking the top of your screen!
+One more post scrolled and the inferno will take over completely.
+Will you contribute to society or flee? 🔥</div>
+      <div class="post-actions">
+        <button class="post-action-btn">👍 Like</button>
+        <button class="post-action-btn">💬 Comment</button>
+        <button class="post-action-btn">🔄 Repost</button>
+      </div>
+    </article>
+
+    <!-- Post 10 -->
+    <article class="mock-post" data-post-id="demo-post-10">
+      <span class="post-badge-number">Post #10 🔥 CRITICAL</span>
+      <div class="post-header">
+        <div class="mock-avatar">💀</div>
+        <div class="post-author-info">
+          <span class="post-author-name">The Doomscroll Demon</span>
+          <span class="post-author-headline">Lord of Wasted Hours | Ruler of Infinite Scrolls</span>
+          <span class="post-time">RIGHT NOW</span>
+        </div>
+      </div>
+      <div class="post-body">💥 YOU HAVE REACHED POST 10! 💥
+The flames are engulfing your entire screen!
+Your dopamine is scorched. You must now make your decision!</div>
+      <div class="post-actions">
+        <button class="post-action-btn">👍 Like</button>
+        <button class="post-action-btn">💬 Comment</button>
+        <button class="post-action-btn">🔄 Repost</button>
+      </div>
+    </article>
+
+    <!-- Extra Posts for Infinite Scroll -->
+    <article class="mock-post" data-post-id="demo-post-11">
+      <span class="post-badge-number">Post #11</span>
+      <div class="post-header">
+        <div class="mock-avatar">🌱</div>
+        <div class="post-author-info">
+          <span class="post-author-name">Post 11</span>
+          <span class="post-author-headline">You really love scrolling don't you?</span>
+          <span class="post-time">Post-Inferno</span>
+        </div>
+      </div>
+      <div class="post-body">Beyond the gates of the inferno lies only further distraction. Go outside and touch grass!</div>
+    </article>
+
+  </main>
+
+  <script src="content.js"></script>
+</body>
+</html>
