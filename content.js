@@ -20,7 +20,7 @@
 
   // Dual-Engine State
   const scrolledPosts = new Set();
-  let maxScrollY = 0;
+  let currentScrollY = 0;  // Live position - decrements when scrolling back up
   let isInfernoActive = false;
 
   // Shadow DOM handles
@@ -450,38 +450,46 @@
       return;
     }
 
-    // --- Engine 2: Cumulative Scroll Distance Tracker ---
-    // A typical LinkedIn post is roughly 500px tall
-    const currentScrollY = Math.max(
+    // --- Engine 2: Live Bidirectional Scroll Position ---
+    // A typical LinkedIn post is roughly 500px tall.
+    // Using live scrollY (not a max) means scrolling back UP decrements the count.
+    currentScrollY = Math.max(
       window.scrollY || 0,
       document.documentElement.scrollTop || 0,
       document.body.scrollTop || 0,
       e && e.target && e.target.scrollTop ? e.target.scrollTop : 0
     );
-
-    if (currentScrollY > maxScrollY) {
-      maxScrollY = currentScrollY;
-    }
-    const distanceEstimate = Math.floor(maxScrollY / 500);
+    const distanceEstimate = Math.floor(currentScrollY / 500);
 
     // --- Engine 1: DOM URN Post Tracker ---
+    // Adds posts to the Set when first seen; also removes them if they scroll
+    // back into view from the top (the user scrolled back up).
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 800;
     const elements = document.querySelectorAll(POST_SELECTORS);
 
     elements.forEach((el) => {
-      // If it's a social action bar, get parent post
       const postContainer = el.classList.contains('feed-shared-social-action-bar')
         ? el.closest('div.feed-shared-update-v2, div.occludable-update, article, div[data-id], div[data-urn]') || el
         : el;
 
       const postId = extractCanonicalId(postContainer);
-      if (!postId || scrolledPosts.has(postId)) return;
+      if (!postId) return;
 
       const rect = postContainer.getBoundingClientRect();
-      // Count when top of post enters the upper 75% of viewport
+
+      // Count a post when it has scrolled into the upper 75% of the viewport
       if (rect.top < viewportHeight * 0.75 && rect.bottom > 0) {
-        scrolledPosts.add(postId);
-        console.log(`[Doomscroll Inferno] 🔥 Post detected (${scrolledPosts.size}/${maxPosts}):`, postId);
+        if (!scrolledPosts.has(postId)) {
+          scrolledPosts.add(postId);
+          console.log(`[Doomscroll Inferno] Post counted (${scrolledPosts.size}/${maxPosts}):`, postId);
+        }
+      }
+
+      // Decrement: if the post is fully back below the top of the viewport
+      // (user scrolled back up and it re-entered from the top), remove it.
+      if (rect.top > viewportHeight * 0.5 && scrolledPosts.has(postId)) {
+        scrolledPosts.delete(postId);
+        console.log(`[Doomscroll Inferno] Post uncounted (${scrolledPosts.size}/${maxPosts}):`, postId);
       }
     });
 
@@ -564,12 +572,6 @@
 
     // Button 1: Post something - navigate in the same tab to the post composer
     modal.querySelector('#doom-act-post').addEventListener('click', () => {
-      removeModal();
-      scrolledPosts.clear();
-      maxScrollY = 0;
-      isInfernoActive = false;
-      updateDisplay();
-
       // ?shareActive=true tells LinkedIn's SPA to open the post composer immediately
       window.location.href = 'https://www.linkedin.com/feed/?shareActive=true';
     });

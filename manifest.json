@@ -1,21 +1,12 @@
 {
   "manifest_version": 3,
   "name": "LinkedIn Doomscroll Inferno 🔥",
-  "version": "1.0.1",
-  "description": "Ultra-lightweight cartoon animated flames rise as you scroll LinkedIn. Reach 10 posts and an inferno prompts you to post or leave!",
+  "version": "1.1.0",
+  "description": "Cartoon animated flames rise as you scroll LinkedIn. Reach 10 posts and an inferno prompts you to post or leave!",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  },
-  "action": {
-    "default_title": "LinkedIn Doomscroll Inferno",
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
   },
   "permissions": [
     "storage"
@@ -24,8 +15,7 @@
     {
       "matches": [
         "https://*.linkedin.com/*",
-        "http://*.linkedin.com/*",
-        "*://*/*demo.html*"
+        "http://*.linkedin.com/*"
       ],
       "all_frames": false,
       "css": [
@@ -35,19 +25,6 @@
         "content.js"
       ],
       "run_at": "document_idle"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "icons/*",
-        "exit.html",
-        "exit.css",
-        "exit.js"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
     }
   ]
 }
