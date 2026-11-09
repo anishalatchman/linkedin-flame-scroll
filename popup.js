@@ -15,10 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function getStorage(keys, cb) {
     try {
       const storage = chrome.storage.local || chrome.storage.sync;
-      if (storage) {
-        storage.get(keys, cb);
-        return;
-      }
+      if (storage) { storage.get(keys, cb); return; }
     } catch (_) {}
     cb({});
   }
@@ -28,6 +25,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const storage = chrome.storage.local || chrome.storage.sync;
       if (storage) storage.set(items);
     } catch (_) {}
+  }
+
+  // Check whether the current tab is a LinkedIn (or demo) tab
+  function isLinkedInTab(url) {
+    if (!url) return false;
+    return url.includes('linkedin.com') || url.includes('demo.html');
   }
 
   // Load saved settings
@@ -41,17 +44,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Poll current tab status
+  // Show a "not on LinkedIn" state in the popup
+  function showNotOnLinkedIn() {
+    counterText.textContent = 'Open LinkedIn to track posts';
+    heatBadge.textContent = 'Inactive';
+    heatBadge.style.background = '#F3F4F6';
+    heatBadge.style.color = '#6B7280';
+    btnTestInferno.disabled = true;
+    btnTestInferno.style.opacity = '0.5';
+    btnResetCounter.disabled = true;
+    btnResetCounter.style.opacity = '0.5';
+  }
+
+  // Poll current tab status — only send messages if on a LinkedIn tab
   function fetchTabStatus() {
     try {
-      if (typeof chrome === 'undefined' || !chrome.tabs) return;
-
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (!tabs || !tabs[0] || !tabs[0].id) return;
+        if (!tabs || !tabs[0]) { showNotOnLinkedIn(); return; }
 
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'GET_STATUS' }, (response) => {
-          if (chrome.runtime.lastError || !response) {
-            counterText.textContent = 'Active on LinkedIn / Demo';
+        const tab = tabs[0];
+
+        // Guard: don't send a message if not on LinkedIn
+        if (!isLinkedInTab(tab.url)) {
+          showNotOnLinkedIn();
+          return;
+        }
+
+        // Safe sendMessage with explicit lastError check to suppress console errors
+        chrome.tabs.sendMessage(tab.id, { action: 'GET_STATUS' }, (response) => {
+          // Read lastError immediately — this is what clears the error from the console
+          const err = chrome.runtime.lastError;
+          if (err || !response) {
+            // Content script not injected yet — tab probably needs a refresh
+            counterText.textContent = 'Refresh the LinkedIn tab to activate';
+            heatBadge.textContent = 'Not Loaded';
+            heatBadge.style.background = '#FFF8E6';
+            heatBadge.style.color = '#A37200';
             return;
           }
 
@@ -95,31 +123,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Toggle flames
   toggleFlames.addEventListener('change', (e) => {
-    const enabled = e.target.checked;
-    setStorage({ flamesEnabled: enabled });
+    setStorage({ flamesEnabled: e.target.checked });
   });
 
-  // Test Inferno button
-  btnTestInferno.addEventListener('click', () => {
+  // Helper: send message only to LinkedIn tabs
+  function sendToLinkedIn(action, cb) {
     try {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (!tabs || !tabs[0] || !tabs[0].id) return;
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'TEST_INFERNO' }, () => {
-          fetchTabStatus();
+        if (!tabs || !tabs[0] || !isLinkedInTab(tabs[0].url)) return;
+        chrome.tabs.sendMessage(tabs[0].id, { action }, () => {
+          // Consume lastError so Chrome doesn't log it
+          void chrome.runtime.lastError;
+          if (cb) cb();
         });
       });
     } catch (_) {}
+  }
+
+  // Test Inferno button
+  btnTestInferno.addEventListener('click', () => {
+    sendToLinkedIn('TEST_INFERNO', fetchTabStatus);
   });
 
   // Reset Counter button
   btnResetCounter.addEventListener('click', () => {
-    try {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (!tabs || !tabs[0] || !tabs[0].id) return;
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'RESET_COUNTER' }, () => {
-          fetchTabStatus();
-        });
-      });
-    } catch (_) {}
+    sendToLinkedIn('RESET_COUNTER', fetchTabStatus);
   });
 });

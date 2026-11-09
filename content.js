@@ -562,7 +562,7 @@
 
     shadowRoot.appendChild(modal);
 
-    // Button 1: Post something — open LinkedIn's create post URL in a new tab
+    // Button 1: Post something — navigate in the same tab to the post composer
     modal.querySelector('#doom-act-post').addEventListener('click', () => {
       removeModal();
       scrolledPosts.clear();
@@ -570,7 +570,8 @@
       isInfernoActive = false;
       updateDisplay();
 
-      window.open('https://www.linkedin.com/post/new/', '_blank');
+      // ?shareActive=true tells LinkedIn's SPA to open the post composer immediately
+      window.location.href = 'https://www.linkedin.com/feed/?shareActive=true';
     });
   }
 
