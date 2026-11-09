@@ -562,7 +562,7 @@
 
     shadowRoot.appendChild(modal);
 
-    // Button 1: Post something — navigate in the same tab to the post composer
+    // Button 1: Post something - navigate in the same tab to the post composer
     modal.querySelector('#doom-act-post').addEventListener('click', () => {
       removeModal();
       scrolledPosts.clear();
