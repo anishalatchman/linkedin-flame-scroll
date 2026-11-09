@@ -1,541 +1,281 @@
 /* ==========================================================================
-   LinkedIn Doomscroll Inferno - Cartoon Animated Flames Stylesheet
+   LinkedIn Doomscroll Inferno - Ultra-Lightweight Cartoon Flames
+   High performance, zero-reflow, hardware-accelerated CSS
    ========================================================================== */
 
-:root {
-  --flame-fire-red: #E62200;
-  --flame-fire-orange: #FF7700;
-  --flame-fire-yellow: #FFD200;
-  --flame-fire-light: #FFF4B8;
-  --flame-dark-outline: #220500;
-}
-
 /* --------------------------------------------------------------------------
-   Container: Holds bottom flames overlay
+   Container: Completely non-blocking fixed bottom overlay
    -------------------------------------------------------------------------- */
 #linkedin-flames-overlay {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100vw;
-  height: var(--flame-height, 45px);
-  pointer-events: none;
-  z-index: 2147483640; /* Ultra-high z-index to stay above LinkedIn header/feed */
-  overflow: visible;
-  transition: height 0.45s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: var(--flame-h, 0px) !important;
+  max-height: 100vh !important;
+  pointer-events: none !important; /* CRITICAL: Never block scrolling or clicks */
+  z-index: 999990 !important;
+  overflow: visible !important;
+  transition: height 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-end !important;
+  will-change: height;
 }
 
-/* Heat glow layer at the baseline */
-#linkedin-flames-overlay .flame-heat-glow {
+/* Layered Cartoon Flame SVG Container */
+.flame-svg-strip {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 120%;
-  background: radial-gradient(
-    ellipse at 50% 100%,
-    rgba(255, 115, 0, 0.45) 0%,
-    rgba(230, 34, 0, 0.3) 45%,
-    rgba(180, 0, 0, 0) 80%
-  );
-  filter: blur(8px);
-  animation: glowPulse 2s ease-in-out infinite alternate;
-  pointer-events: none;
-}
-
-/* --------------------------------------------------------------------------
-   Layered Cartoon Flame Waves
-   -------------------------------------------------------------------------- */
-.flame-svg-wrapper {
-  position: absolute;
-  bottom: 0;
-  left: -5%;
-  width: 110%;
   height: 100%;
   overflow: hidden;
-  display: flex;
-  align-items: flex-end;
-  pointer-events: none;
+  pointer-events: none !important;
 }
 
-.flame-layer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 200%;
-  height: 100%;
-  background-repeat: repeat-x;
-  background-position: bottom left;
-  transform-origin: bottom center;
-  will-change: transform;
-}
-
-/* Layer 1: Dark red cartoon outline / back flames */
-.flame-layer.layer-red {
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" preserveAspectRatio="none"><path d="M0,400 L0,180 C40,110 70,60 100,140 C140,240 160,80 200,30 C240,140 270,180 300,90 C340,10 380,110 400,210 C430,90 470,30 500,120 C540,230 570,80 600,20 C640,130 670,190 700,80 C740,10 780,120 800,220 C840,90 870,40 900,130 C940,220 970,70 1000,25 C1040,140 1070,180 1100,90 C1140,20 1170,120 1200,190 L1200,400 Z" fill="%23220500" stroke="%23220500" stroke-width="8"/><path d="M0,400 L0,190 C40,120 70,70 100,145 C140,245 160,90 200,40 C240,145 270,185 300,100 C340,20 380,120 400,215 C430,100 470,40 500,128 C540,235 570,90 600,30 C640,138 670,195 700,90 C740,20 780,128 800,225 C840,100 870,50 900,138 C940,225 970,80 1000,35 C1040,148 1070,188 1100,100 C1140,30 1170,128 1200,198 L1200,400 Z" fill="%23D31B00"/></svg>');
-  background-size: 50% 100%;
-  filter: drop-shadow(0 -4px 6px rgba(0, 0, 0, 0.45));
-  animation: waveRed 2.8s ease-in-out infinite alternate;
-}
-
-/* Layer 2: Vibrant orange middle flames */
-.flame-layer.layer-orange {
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" preserveAspectRatio="none"><path d="M0,400 L0,220 C45,160 75,110 110,180 C150,260 175,120 210,70 C250,170 275,210 310,140 C350,60 385,150 410,240 C445,140 475,80 510,160 C550,250 575,120 610,60 C650,160 675,220 710,130 C750,50 785,160 810,250 C845,140 875,90 910,170 C950,250 975,110 1010,65 C1050,170 1075,210 1110,140 C1150,60 1175,160 1200,230 L1200,400 Z" fill="%23FF6F00"/></svg>');
-  background-size: 45% 92%;
-  animation: waveOrange 2.1s ease-in-out infinite alternate;
-}
-
-/* Layer 3: Bright yellow inner flame core */
-.flame-layer.layer-yellow {
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" preserveAspectRatio="none"><path d="M0,400 L0,270 C50,210 80,170 115,225 C155,290 180,180 215,130 C255,210 280,250 315,190 C355,120 390,200 415,280 C450,195 480,140 515,210 C555,285 580,175 615,120 C655,210 680,260 715,185 C755,110 790,210 815,290 C850,200 880,150 915,220 C955,290 980,170 1015,125 C1055,220 1080,255 1115,190 C1155,125 1180,210 1200,275 L1200,400 Z" fill="%23FFD700"/></svg>');
-  background-size: 40% 82%;
-  animation: waveYellow 1.6s ease-in-out infinite alternate;
-}
-
-/* Layer 4: Hot white-yellow dancing tongues */
-.flame-layer.layer-light {
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" preserveAspectRatio="none"><path d="M0,400 L0,320 C50,270 80,230 120,280 C160,335 185,245 220,190 C260,260 285,300 320,245 C360,180 395,260 420,330 C455,255 485,210 520,270 C560,335 585,240 620,180 C660,260 685,310 720,240 C760,170 795,270 820,340 C855,260 885,220 920,280 C960,340 985,235 1020,185 C1060,270 1085,305 1120,245 C1160,185 1185,265 1200,325 L1200,400 Z" fill="%23FFF6A8"/></svg>');
-  background-size: 35% 68%;
-  animation: waveLight 1.2s ease-in-out infinite alternate;
-}
-
-/* Bottom solid burning coal bed */
-.flame-base-bar {
+.flame-svg-strip svg {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 18px;
-  background: linear-gradient(to top, #3A0500 0%, #B81800 40%, #FF6600 80%, #FFCC00 100%);
-  border-top: 3px solid #FFED4A;
-  box-shadow: 0 0 16px rgba(255, 120, 0, 0.85);
-  pointer-events: none;
+  height: 100%;
+  display: block;
+  transform-origin: bottom center;
 }
 
-/* --------------------------------------------------------------------------
-   Cartoon Sparks & Embers
-   -------------------------------------------------------------------------- */
-.flame-spark {
+/* Red Outer Flame Layer */
+.flame-svg-strip .flame-path-red {
+  fill: #E62200;
+  stroke: #1A0300;
+  stroke-width: 4px;
+  animation: cartoonSway1 2.4s ease-in-out infinite alternate;
+  transform-origin: bottom center;
+}
+
+/* Orange Middle Flame Layer */
+.flame-svg-strip .flame-path-orange {
+  fill: #FF7700;
+  animation: cartoonSway2 1.8s ease-in-out infinite alternate;
+  transform-origin: bottom center;
+}
+
+/* Yellow Core Flame Layer */
+.flame-svg-strip .flame-path-yellow {
+  fill: #FFD200;
+  animation: cartoonSway3 1.3s ease-in-out infinite alternate;
+  transform-origin: bottom center;
+}
+
+/* Hot White Tongue Highlights */
+.flame-svg-strip .flame-path-white {
+  fill: #FFF6A8;
+  animation: cartoonSway2 1.1s ease-in-out infinite alternate;
+  transform-origin: bottom center;
+}
+
+/* Solid Burning Base Bar */
+.flame-bottom-bar {
   position: absolute;
-  bottom: 15px;
-  background-color: #FFF275;
-  border: 1.5px solid #220500;
-  border-radius: 50% 50% 20% 50%;
-  transform: rotate(45deg);
-  pointer-events: none;
-  animation: floatEmber var(--spark-dur, 2s) ease-out infinite;
-  opacity: 0;
-  box-shadow: 0 0 6px #FF8800;
-}
-
-@keyframes floatEmber {
-  0% {
-    transform: translateY(0) scale(0.6) rotate(45deg);
-    opacity: 0;
-  }
-  15% {
-    opacity: 1;
-    transform: translateY(-20px) scale(1) rotate(60deg);
-  }
-  75% {
-    opacity: 0.85;
-    transform: translateY(calc(var(--spark-travel, -180px) * 0.8)) translateX(var(--spark-drift, 20px)) scale(0.8) rotate(30deg);
-  }
-  100% {
-    transform: translateY(var(--spark-travel, -240px)) translateX(calc(var(--spark-drift, 20px) * 1.5)) scale(0.2) rotate(10deg);
-    opacity: 0;
-  }
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 14px;
+  background: #E62200;
+  border-top: 3px solid #FFD200;
+  pointer-events: none !important;
 }
 
 /* --------------------------------------------------------------------------
-   Waving Animations
+   GPU Transform Keyframes (No layout reflows, zero CPU load)
    -------------------------------------------------------------------------- */
-@keyframes waveRed {
-  0% {
-    transform: translateX(0) scaleY(0.96) skewX(-1.5deg);
-  }
-  50% {
-    transform: translateX(-4%) scaleY(1.05) skewX(1deg);
-  }
-  100% {
-    transform: translateX(-8%) scaleY(0.98) skewX(-1deg);
-  }
+@keyframes cartoonSway1 {
+  0% { transform: scaleY(0.96) skewX(-1.5deg); }
+  100% { transform: scaleY(1.04) skewX(1.5deg); }
 }
 
-@keyframes waveOrange {
-  0% {
-    transform: translateX(0) scaleY(1.04) skewX(2deg);
-  }
-  50% {
-    transform: translateX(-5%) scaleY(0.95) skewX(-1.5deg);
-  }
-  100% {
-    transform: translateX(-10%) scaleY(1.06) skewX(1deg);
-  }
+@keyframes cartoonSway2 {
+  0% { transform: scaleY(1.04) skewX(2deg); }
+  100% { transform: scaleY(0.95) skewX(-2deg); }
 }
 
-@keyframes waveYellow {
-  0% {
-    transform: translateX(-2%) scaleY(0.92) skewX(-2deg);
-  }
-  50% {
-    transform: translateX(-7%) scaleY(1.08) skewX(2deg);
-  }
-  100% {
-    transform: translateX(-12%) scaleY(0.96) skewX(-1deg);
-  }
-}
-
-@keyframes waveLight {
-  0% {
-    transform: translateX(0) scaleY(1.05) scaleX(0.98);
-  }
-  50% {
-    transform: translateX(-6%) scaleY(0.90) scaleX(1.02);
-  }
-  100% {
-    transform: translateX(-13%) scaleY(1.10) scaleX(0.97);
-  }
-}
-
-@keyframes glowPulse {
-  0% {
-    opacity: 0.45;
-    transform: scaleY(0.9);
-  }
-  100% {
-    opacity: 0.85;
-    transform: scaleY(1.15);
-  }
+@keyframes cartoonSway3 {
+  0% { transform: scaleY(0.92) skewX(-2.5deg); }
+  100% { transform: scaleY(1.08) skewX(2.5deg); }
 }
 
 /* --------------------------------------------------------------------------
-   Floating Cartoon Doom Meter HUD (bottom right pill)
+   Doom Meter HUD (Positioned at bottom-left to NOT conflict with LinkedIn chat)
    -------------------------------------------------------------------------- */
 #doom-meter-pill {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 2147483645;
-  background: #18191B;
-  color: #FFFFFF;
-  border: 3px solid #220500;
-  border-radius: 999px;
-  padding: 8px 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 12px rgba(255, 115, 0, 0.5);
-  cursor: pointer;
-  user-select: none;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+  position: fixed !important;
+  bottom: 18px !important;
+  left: 18px !important;
+  z-index: 999995 !important;
+  background: #18191B !important;
+  color: #FFFFFF !important;
+  border: 2px solid #FF7700 !important;
+  border-radius: 999px !important;
+  padding: 6px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  pointer-events: auto !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  transition: transform 0.2s ease !important;
 }
 
 #doom-meter-pill:hover {
-  transform: translateY(-3px) scale(1.04);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5), 0 0 18px rgba(255, 115, 0, 0.8);
+  transform: translateY(-2px) scale(1.03) !important;
 }
 
-#doom-meter-pill.shake-warning {
-  animation: pillShake 0.45s ease-in-out;
+#doom-meter-pill .doom-meter-icon {
+  font-size: 16px !important;
 }
 
-@keyframes pillShake {
-  0%, 100% { transform: translateX(0) scale(1); }
-  20% { transform: translateX(-6px) rotate(-4deg) scale(1.06); }
-  40% { transform: translateX(6px) rotate(4deg) scale(1.06); }
-  60% { transform: translateX(-4px) rotate(-2deg); }
-  80% { transform: translateX(4px) rotate(2deg); }
+#doom-meter-pill .doom-meter-text {
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: #FFD200 !important;
 }
 
-#doom-meter-pill .meter-icon {
-  font-size: 20px;
-  display: inline-block;
-  animation: meterFlameBounce 1.2s ease-in-out infinite alternate;
+#doom-meter-pill .doom-bar-bg {
+  width: 40px !important;
+  height: 6px !important;
+  background: #333333 !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
 }
 
-@keyframes meterFlameBounce {
-  0% { transform: scale(1) rotate(-5deg); }
-  100% { transform: scale(1.2) rotate(5deg); }
-}
-
-#doom-meter-pill .meter-text-group {
-  display: flex;
-  flex-direction: column;
-}
-
-#doom-meter-pill .meter-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  font-weight: 800;
-  letter-spacing: 0.8px;
-  color: #FFAE00;
-}
-
-#doom-meter-pill .meter-counter {
-  font-size: 14px;
-  font-weight: 900;
-  color: #FFFFFF;
-}
-
-#doom-meter-pill .meter-bar-container {
-  width: 50px;
-  height: 8px;
-  background: #333333;
-  border-radius: 999px;
-  overflow: hidden;
-  border: 1px solid #444;
-}
-
-#doom-meter-pill .meter-bar-fill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #FFC800, #FF5500, #E60000);
-  border-radius: 999px;
-  transition: width 0.3s ease;
+#doom-meter-pill .doom-bar-fill {
+  height: 100% !important;
+  width: 0% !important;
+  background: linear-gradient(90deg, #FFD200, #FF5500, #E60000) !important;
+  transition: width 0.3s ease !important;
 }
 
 /* --------------------------------------------------------------------------
-   Full Screen Inferno State (>= 10 posts)
-   -------------------------------------------------------------------------- */
-body.inferno-quake {
-  animation: screenQuake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-}
-
-@keyframes screenQuake {
-  10%, 90% { transform: translate3d(-3px, -2px, 0); }
-  20%, 80% { transform: translate3d(4px, 3px, 0); }
-  30%, 50%, 70% { transform: translate3d(-5px, -4px, 0); }
-  40%, 60% { transform: translate3d(5px, 4px, 0); }
-}
-
-#linkedin-flames-overlay.inferno-active {
-  height: 100vh !important;
-  pointer-events: auto !important;
-  background: rgba(20, 3, 0, 0.75);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-
-#linkedin-flames-overlay.inferno-active .flame-svg-wrapper {
-  height: 80vh;
-  opacity: 0.95;
-}
-
-/* Red Screen Border Vignette in Inferno mode */
-.inferno-vignette {
-  position: fixed;
-  inset: 0;
-  box-shadow: inset 0 0 120px 40px rgba(230, 34, 0, 0.8), inset 0 0 200px rgba(255, 120, 0, 0.5);
-  pointer-events: none;
-  z-index: 2147483641;
-  animation: vignettePulse 1.8s ease-in-out infinite alternate;
-}
-
-@keyframes vignettePulse {
-  0% { opacity: 0.7; }
-  100% { opacity: 1; }
-}
-
-/* --------------------------------------------------------------------------
-   Doomscroll Intervention Modal
+   Intervention Modal Overlay (Only shown when 10+ posts are reached)
    -------------------------------------------------------------------------- */
 #inferno-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 2147483647;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  animation: modalFadeIn 0.4s ease-out;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  background: rgba(15, 3, 0, 0.75) !important;
+  pointer-events: auto !important;
+  animation: modalFadeIn 0.3s ease-out;
 }
 
 @keyframes modalFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .inferno-modal-card {
-  position: relative;
-  max-width: 540px;
-  width: 100%;
-  background: #FFFFFF;
-  border: 4px solid #1A0500;
-  border-radius: 24px;
-  padding: 32px 28px 28px;
-  text-align: center;
-  box-shadow: 10px 10px 0px #1A0500, 0 20px 50px rgba(0, 0, 0, 0.6);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  overflow: hidden;
-  animation: cardPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  max-width: 500px !important;
+  width: 100% !important;
+  background: #FFFFFF !important;
+  border: 4px solid #1A0500 !important;
+  border-radius: 20px !important;
+  padding: 28px 24px 24px !important;
+  text-align: center !important;
+  box-shadow: 8px 8px 0px #1A0500 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  color: #1A0500 !important;
+  animation: cardBounceIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-@keyframes cardPop {
-  0% { transform: scale(0.8) rotate(-2deg); }
-  100% { transform: scale(1) rotate(0deg); }
+@keyframes cardBounceIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
-.inferno-modal-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 12px;
-  background: linear-gradient(90deg, #E62200, #FF7700, #FFD200, #FF7700, #E62200);
+.inferno-modal-card h2 {
+  font-size: 24px !important;
+  font-weight: 900 !important;
+  margin: 8px 0 12px !important;
+  color: #D31B00 !important;
 }
 
-.inferno-demon-badge {
-  width: 80px;
-  height: 80px;
-  margin: -10px auto 16px;
-  background: #FFF3D6;
-  border: 3px solid #1A0500;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 42px;
-  box-shadow: 4px 4px 0px #1A0500;
-  animation: demonBounce 1.5s ease-in-out infinite alternate;
+.inferno-modal-card p {
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  color: #4A3E3D !important;
+  margin-bottom: 20px !important;
 }
 
-@keyframes demonBounce {
-  0% { transform: translateY(0) rotate(-6deg); }
-  100% { transform: translateY(-8px) rotate(6deg); }
-}
-
-.inferno-modal-title {
-  margin: 0 0 10px;
-  font-size: 26px;
-  font-weight: 900;
-  color: #1A0500;
-  letter-spacing: -0.5px;
-  line-height: 1.2;
-}
-
-.inferno-modal-title .badge-highlight {
-  background: #FFE082;
-  border: 2px solid #1A0500;
-  border-radius: 8px;
-  padding: 2px 8px;
-  display: inline-block;
-  color: #D31B00;
-  box-shadow: 2px 2px 0px #1A0500;
-}
-
-.inferno-modal-desc {
-  margin: 0 0 24px;
-  font-size: 15px;
-  line-height: 1.55;
-  color: #4A3E3D;
-  font-weight: 500;
-}
-
-.inferno-modal-desc strong {
-  color: #D31B00;
-  font-weight: 800;
-}
-
-/* Modal Action Buttons */
-.inferno-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.inferno-modal-card .inferno-actions {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
 }
 
 .inferno-btn {
-  width: 100%;
-  padding: 14px 18px;
-  font-size: 16px;
-  font-weight: 800;
-  border: 3px solid #1A0500;
-  border-radius: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 4px 4px 0px #1A0500;
-  text-decoration: none;
+  width: 100% !important;
+  padding: 12px 16px !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  border: 3px solid #1A0500 !important;
+  border-radius: 12px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  box-shadow: 3px 3px 0px #1A0500 !important;
+  transition: transform 0.1s ease !important;
+  text-decoration: none !important;
 }
 
 .inferno-btn:active {
-  transform: translate(3px, 3px);
-  box-shadow: 1px 1px 0px #1A0500;
+  transform: translate(2px, 2px) !important;
+  box-shadow: 1px 1px 0px #1A0500 !important;
 }
 
-/* Button 1: Contribute to Society */
-.inferno-btn-contribute {
-  background: #0073B1;
-  color: #FFFFFF;
+.btn-post-society {
+  background: #0073B1 !important;
+  color: #FFFFFF !important;
 }
 
-.inferno-btn-contribute:hover {
-  background: #005F94;
-  transform: translateY(-2px);
-  box-shadow: 4px 6px 0px #1A0500;
+.btn-leave-linkedin {
+  background: #E62200 !important;
+  color: #FFFFFF !important;
 }
 
-/* Button 2: Get Off LinkedIn */
-.inferno-btn-leave {
-  background: #E62200;
-  color: #FFFFFF;
+.btn-snooze-flames {
+  background: #F0F4F8 !important;
+  color: #1A0500 !important;
+  font-size: 13px !important;
+  padding: 8px !important;
+  box-shadow: none !important;
+  border-width: 2px !important;
 }
 
-.inferno-btn-leave:hover {
-  background: #C41400;
-  transform: translateY(-2px);
-  box-shadow: 4px 6px 0px #1A0500;
-}
-
-/* Button 3: Snooze / Water Douse */
-.inferno-btn-snooze {
-  background: #E8F4FD;
-  color: #0A66C2;
-  font-size: 13px;
-  padding: 10px;
-  border: 2px solid #0A66C2;
-  box-shadow: none;
-}
-
-.inferno-btn-snooze:hover {
-  background: #D0E8FA;
-}
-
-/* Notification Toast for "Post Something" action */
-#doom-celebrate-toast {
-  position: fixed;
-  top: 70px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-20px);
-  z-index: 2147483647;
-  background: #057642;
-  color: #FFFFFF;
-  border: 3px solid #02381F;
-  border-radius: 12px;
-  padding: 12px 24px;
-  font-weight: 700;
-  font-size: 15px;
-  box-shadow: 4px 4px 0px #02381F, 0 10px 25px rgba(0,0,0,0.3);
-  opacity: 0;
-  pointer-events: none;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-#doom-celebrate-toast.toast-show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
+/* Toast */
+#doom-toast-msg {
+  position: fixed !important;
+  top: 60px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 2147483647 !important;
+  background: #057642 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #02381F !important;
+  border-radius: 10px !important;
+  padding: 10px 20px !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.3) !important;
+  pointer-events: none !important;
+  display: none;
 }

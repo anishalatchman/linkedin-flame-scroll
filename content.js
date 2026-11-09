@@ -1,525 +1,317 @@
 /**
  * LinkedIn Doomscroll Inferno 🔥
- * Cartoon Animated Flames & Doomscroll Intervention Content Script
+ * Ultra-Lightweight Content Script (Zero-Lag, Non-Blocking)
  */
 
 (function () {
   'use strict';
 
-  // Prevent multiple injections
-  if (window.__linkedinDoomscrollInfernoLoaded) return;
-  window.__linkedinDoomscrollInfernoLoaded = true;
+  // 1. Guard against running in iframes or double loading
+  if (window !== window.top) return;
+  if (window.__linkedinDoomInfernoLoaded) return;
+  window.__linkedinDoomInfernoLoaded = true;
 
-  // Configuration state
-  let config = {
-    maxPosts: 10,
-    flamesEnabled: true,
-    snoozeUntil: 0
-  };
+  // Configuration
+  let maxPosts = 10;
+  let flamesEnabled = true;
+  let snoozeUntil = 0;
 
-  // Tracking state
-  const seenPosts = new Set();
+  // State
   const passedPosts = new Set();
-  let currentFlameHeightPercent = 5;
   let isInfernoActive = false;
-  let isModalOpen = false;
+  let overlayEl = null;
+  let meterPillEl = null;
 
-  // Load saved preferences
+  // Load preferences from storage
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-    chrome.storage.sync.get(['maxPosts', 'flamesEnabled', 'snoozeUntil'], (result) => {
-      if (result.maxPosts) config.maxPosts = Number(result.maxPosts);
-      if (result.flamesEnabled !== undefined) config.flamesEnabled = result.flamesEnabled;
-      if (result.snoozeUntil) config.snoozeUntil = Number(result.snoozeUntil);
+    chrome.storage.sync.get(['maxPosts', 'flamesEnabled', 'snoozeUntil'], (res) => {
+      if (res.maxPosts) maxPosts = Number(res.maxPosts);
+      if (res.flamesEnabled !== undefined) flamesEnabled = res.flamesEnabled;
+      if (res.snoozeUntil) snoozeUntil = Number(res.snoozeUntil);
       updateDisplay();
     });
 
     chrome.storage.onChanged.addListener((changes) => {
-      if (changes.maxPosts) config.maxPosts = Number(changes.maxPosts.newValue);
-      if (changes.flamesEnabled !== undefined) config.flamesEnabled = changes.flamesEnabled.newValue;
-      if (changes.snoozeUntil) config.snoozeUntil = Number(changes.snoozeUntil.newValue);
+      if (changes.maxPosts) maxPosts = Number(changes.maxPosts.newValue);
+      if (changes.flamesEnabled !== undefined) flamesEnabled = changes.flamesEnabled.newValue;
+      if (changes.snoozeUntil) snoozeUntil = Number(changes.snoozeUntil.newValue);
       updateDisplay();
     });
   }
 
-  // Build the DOM overlays
-  function initOverlay() {
+  // Create minimal flame overlay
+  function createOverlay() {
     if (document.getElementById('linkedin-flames-overlay')) return;
 
-    // 1. Flames Container
-    const flameOverlay = document.createElement('div');
-    flameOverlay.id = 'linkedin-flames-overlay';
+    // Outer flames wrapper
+    overlayEl = document.createElement('div');
+    overlayEl.id = 'linkedin-flames-overlay';
 
-    // Ambient heat glow
-    const heatGlow = document.createElement('div');
-    heatGlow.className = 'flame-heat-glow';
-    flameOverlay.appendChild(heatGlow);
-
-    // Layered Cartoon Flame SVGs
-    const svgWrapper = document.createElement('div');
-    svgWrapper.className = 'flame-svg-wrapper';
-
-    const redLayer = document.createElement('div');
-    redLayer.className = 'flame-layer layer-red';
-
-    const orangeLayer = document.createElement('div');
-    orangeLayer.className = 'flame-layer layer-orange';
-
-    const yellowLayer = document.createElement('div');
-    yellowLayer.className = 'flame-layer layer-yellow';
-
-    const lightLayer = document.createElement('div');
-    lightLayer.className = 'flame-layer layer-light';
-
-    svgWrapper.appendChild(redLayer);
-    svgWrapper.appendChild(orangeLayer);
-    svgWrapper.appendChild(yellowLayer);
-    svgWrapper.appendChild(lightLayer);
-    flameOverlay.appendChild(svgWrapper);
-
-    // Bottom solid burning coal bed
-    const baseBar = document.createElement('div');
-    baseBar.className = 'flame-base-bar';
-    flameOverlay.appendChild(baseBar);
-
-    // Spurt random sparks container
-    const sparksContainer = document.createElement('div');
-    sparksContainer.id = 'flame-sparks-container';
-    flameOverlay.appendChild(sparksContainer);
-
-    document.body.appendChild(flameOverlay);
-
-    // 2. Floating Doom Meter HUD
-    const meterPill = document.createElement('div');
-    meterPill.id = 'doom-meter-pill';
-    meterPill.innerHTML = `
-      <span class="meter-icon" id="meter-demon-icon">🔥</span>
-      <div class="meter-text-group">
-        <span class="meter-title">Feed Heat</span>
-        <span class="meter-counter" id="meter-counter-text">0 / ${config.maxPosts} posts</span>
+    // Single vector cartoon flame strip
+    overlayEl.innerHTML = `
+      <div class="flame-svg-strip">
+        <svg viewBox="0 0 1200 200" preserveAspectRatio="none">
+          <!-- Red Outer Flame -->
+          <path class="flame-path-red" d="M0,200 L0,120 C50,40 80,140 120,60 C160,140 200,20 240,110 C280,40 320,130 360,70 C400,10 440,120 480,50 C520,130 560,30 600,110 C640,40 680,120 720,60 C760,10 800,130 840,40 C880,110 920,50 960,120 C1000,30 1040,130 1080,60 C1120,20 1160,110 1200,100 L1200,200 Z" />
+          <!-- Orange Mid Flame -->
+          <path class="flame-path-orange" d="M0,200 L0,140 C50,70 80,150 120,90 C160,150 200,50 240,130 C280,70 320,150 360,100 C400,40 440,140 480,80 C520,150 560,60 600,130 C640,70 680,140 720,90 C760,40 800,150 840,70 C880,130 920,80 960,140 C1000,60 1040,150 1080,90 C1120,50 1160,130 1200,120 L1200,200 Z" />
+          <!-- Yellow Core Flame -->
+          <path class="flame-path-yellow" d="M0,200 L0,160 C50,110 80,170 120,130 C160,170 200,90 240,150 C280,110 320,170 360,130 C400,80 440,160 480,120 C520,170 560,100 600,150 C640,110 680,160 720,130 C760,80 800,170 840,110 C880,150 920,120 960,160 C1000,100 1040,170 1080,130 C1120,90 1160,150 1200,150 L1200,200 Z" />
+          <!-- Hot White Accents -->
+          <ellipse cx="240" cy="170" rx="12" ry="20" class="flame-path-white" />
+          <ellipse cx="480" cy="165" rx="12" ry="20" class="flame-path-white" />
+          <ellipse cx="720" cy="170" rx="12" ry="20" class="flame-path-white" />
+          <ellipse cx="960" cy="165" rx="12" ry="20" class="flame-path-white" />
+        </svg>
       </div>
-      <div class="meter-bar-container">
-        <div class="meter-bar-fill" id="meter-bar-fill"></div>
+      <div class="flame-bottom-bar"></div>
+    `;
+    document.documentElement.appendChild(overlayEl);
+
+    // Floating HUD Pill (Bottom Left, completely clear of LinkedIn chat)
+    meterPillEl = document.createElement('div');
+    meterPillEl.id = 'doom-meter-pill';
+    meterPillEl.innerHTML = `
+      <span class="doom-meter-icon" id="doom-icon">🔥</span>
+      <span class="doom-meter-text" id="doom-text">0 / ${maxPosts} posts</span>
+      <div class="doom-bar-bg">
+        <div class="doom-bar-fill" id="doom-fill"></div>
       </div>
     `;
+    document.documentElement.appendChild(meterPillEl);
 
-    meterPill.title = 'LinkedIn Doomscroll Inferno: Flame rises with every post scrolled past!';
-    meterPill.addEventListener('click', () => {
-      // Small easter-egg: shake the meter or open trigger
-      meterPill.classList.add('shake-warning');
-      setTimeout(() => meterPill.classList.remove('shake-warning'), 500);
-    });
-
-    document.body.appendChild(meterPill);
-
-    // 3. Celebratory Toast
+    // Notification toast
     const toast = document.createElement('div');
-    toast.id = 'doom-celebrate-toast';
-    toast.innerText = '🚀 Awesome! You chose to create instead of consume.';
-    document.body.appendChild(toast);
-
-    // Periodically spawn cartoon sparks
-    spawnPeriodicSparks();
+    toast.id = 'doom-toast-msg';
+    document.documentElement.appendChild(toast);
   }
 
-  // Generate floating cartoon sparks
-  function spawnPeriodicSparks() {
-    const container = document.getElementById('flame-sparks-container');
-    if (!container) return;
-
-    setInterval(() => {
-      if (!config.flamesEnabled || isSnoozed()) return;
-
-      const spark = document.createElement('div');
-      spark.className = 'flame-spark';
-
-      const leftPercent = Math.random() * 96 + 2; // 2% to 98%
-      const size = Math.random() * 8 + 6; // 6px to 14px
-      const travel = -(Math.random() * 180 + 100);
-      const drift = (Math.random() - 0.5) * 80;
-      const dur = Math.random() * 1.5 + 1.2;
-
-      spark.style.left = `${leftPercent}%`;
-      spark.style.width = `${size}px`;
-      spark.style.height = `${size}px`;
-      spark.style.setProperty('--spark-travel', `${travel}px`);
-      spark.style.setProperty('--spark-drift', `${drift}px`);
-      spark.style.setProperty('--spark-dur', `${dur}s`);
-
-      container.appendChild(spark);
-
-      setTimeout(() => {
-        spark.remove();
-      }, dur * 1000);
-    }, 350);
-  }
-
-  // Check if currently snoozed
-  function isSnoozed() {
-    return Date.now() < (config.snoozeUntil || 0);
-  }
-
-  // Post element selectors for LinkedIn (and Demo)
-  const POST_SELECTORS = [
-    'div.feed-shared-update-v2',
-    'div[data-urn*="urn:li:activity:"]',
-    'div[data-id*="urn:li:activity:"]',
-    'div[data-view-name="feed-full-update"]',
-    'div.occludable-update',
-    '.mock-post' // for demo.html
-  ];
-
-  function getAllPostElements() {
-    const elements = [];
-    for (const selector of POST_SELECTORS) {
-      const found = document.querySelectorAll(selector);
-      found.forEach(el => {
-        // Filter out small embedded sub-components, keep distinct top-level post containers
-        if (!elements.includes(el) && el.offsetHeight > 100) {
-          elements.push(el);
-        }
-      });
-    }
-    return elements;
-  }
-
-  // Determine a unique identifier for each post
-  function getPostId(el, index) {
-    return (
-      el.getAttribute('data-urn') ||
-      el.getAttribute('data-id') ||
-      el.getAttribute('data-chameleon-result-urn') ||
-      el.id ||
-      el.dataset.postId ||
-      `post-idx-${index}`
+  // Get strictly top-level main feed posts
+  function getFeedPosts() {
+    const main = document.querySelector('main, [role="main"], .scaffold-layout__main') || document;
+    const raw = main.querySelectorAll(
+      'div.feed-shared-update-v2, div[data-view-name="feed-full-update"], [data-urn*="activity:"], .mock-post'
     );
-  }
 
-  // Check posts scrolled past
-  function evaluateScroll() {
-    if (!config.flamesEnabled || isSnoozed()) {
-      resetFlamesToResting();
-      return;
-    }
-
-    const posts = getAllPostElements();
-    const viewportHeight = window.innerHeight;
-
-    posts.forEach((postEl, index) => {
-      const postId = getPostId(postEl, index);
-      seenPosts.add(postId);
-
-      const rect = postEl.getBoundingClientRect();
-      // A post is considered "scrolled past" if its bottom is above the middle of viewport
-      // or its top has scrolled significantly past the top of the viewport
-      if (rect.bottom < viewportHeight * 0.55 || rect.top < -rect.height * 0.6) {
-        if (!passedPosts.has(postId)) {
-          passedPosts.add(postId);
-          onPostScrolledPast();
-        }
+    const posts = [];
+    for (let i = 0; i < raw.length; i++) {
+      const el = raw[i];
+      // Skip if nested inside another post
+      if (!el.parentElement || !el.parentElement.closest('div.feed-shared-update-v2, div[data-view-name="feed-full-update"], .mock-post')) {
+        posts.push(el);
       }
-    });
-
-    updateDisplay();
-  }
-
-  function onPostScrolledPast() {
-    const pill = document.getElementById('doom-meter-pill');
-    if (pill) {
-      pill.classList.remove('shake-warning');
-      void pill.offsetWidth; // trigger reflow
-      pill.classList.add('shake-warning');
     }
+    return posts;
   }
 
-  // Update visual flame height & counter
-  function updateDisplay() {
-    const flameOverlay = document.getElementById('linkedin-flames-overlay');
-    const counterText = document.getElementById('meter-counter-text');
-    const barFill = document.getElementById('meter-bar-fill');
-    const demonIcon = document.getElementById('meter-demon-icon');
+  // Lightweight scroll check using requestAnimationFrame
+  let isCheckingScroll = false;
+  function onScroll() {
+    if (isCheckingScroll) return;
+    isCheckingScroll = true;
 
-    if (!flameOverlay) return;
+    window.requestAnimationFrame(() => {
+      checkPostsScrolled();
+      isCheckingScroll = false;
+    });
+  }
 
-    if (!config.flamesEnabled || isSnoozed()) {
-      flameOverlay.style.setProperty('--flame-height', '0px');
-      flameOverlay.style.display = 'none';
-      if (counterText) counterText.innerText = 'Snoozed 💧';
-      if (barFill) barFill.style.width = '0%';
+  function checkPostsScrolled() {
+    if (!flamesEnabled || Date.now() < snoozeUntil) {
+      if (overlayEl) overlayEl.style.setProperty('--flame-h', '0px');
       return;
     }
 
-    flameOverlay.style.display = 'flex';
+    // Require actual scrolling beyond page top
+    if (window.scrollY < 120) return;
+
+    const posts = getFeedPosts();
+    let countChanged = false;
+
+    for (let i = 0; i < posts.length; i++) {
+      const el = posts[i];
+      const id = el.getAttribute('data-urn') || el.getAttribute('data-id') || el.dataset.postId || `p-${i}`;
+      if (passedPosts.has(id)) continue;
+
+      const rect = el.getBoundingClientRect();
+      // Only count if post has scrolled past top of the screen
+      if (rect.bottom < 80 && rect.height > 60) {
+        passedPosts.add(id);
+        countChanged = true;
+      }
+    }
+
+    if (countChanged) {
+      updateDisplay();
+    }
+  }
+
+  function updateDisplay() {
+    if (!overlayEl) return;
+
+    const isSnoozed = Date.now() < snoozeUntil;
+    if (!flamesEnabled || isSnoozed) {
+      overlayEl.style.setProperty('--flame-h', '0px');
+      if (meterPillEl) meterPillEl.style.display = isSnoozed ? 'flex' : 'none';
+      const text = document.getElementById('doom-text');
+      if (text && isSnoozed) text.innerText = 'Snoozed 💧';
+      return;
+    }
+
+    if (meterPillEl) meterPillEl.style.display = 'flex';
 
     const count = passedPosts.size;
-    const max = config.maxPosts;
-    const ratio = Math.min(count / max, 1.0);
+    const ratio = Math.min(count / maxPosts, 1.0);
 
-    // Update meter counter text and fill bar
-    if (counterText) {
-      counterText.innerText = `${count} / ${max} posts`;
-    }
-    if (barFill) {
-      barFill.style.width = `${Math.round(ratio * 100)}%`;
-    }
+    // Update meter text and progress bar
+    const textEl = document.getElementById('doom-text');
+    const fillEl = document.getElementById('doom-fill');
+    const iconEl = document.getElementById('doom-icon');
 
-    // Dynamic flame emoji state
-    if (demonIcon) {
-      if (ratio >= 1.0) demonIcon.innerText = '😈';
-      else if (ratio >= 0.75) demonIcon.innerText = '🥵';
-      else if (ratio >= 0.4) demonIcon.innerText = '😅';
-      else demonIcon.innerText = '🔥';
+    if (textEl) textEl.innerText = `${count} / ${maxPosts} posts`;
+    if (fillEl) fillEl.style.width = `${Math.round(ratio * 100)}%`;
+    if (iconEl) {
+      iconEl.innerText = ratio >= 1.0 ? '😈' : ratio >= 0.7 ? '🥵' : ratio >= 0.4 ? '😅' : '🔥';
     }
 
-    // Calculate height of the cartoon flames
     if (count === 0) {
-      flameOverlay.style.setProperty('--flame-height', '45px');
+      overlayEl.style.setProperty('--flame-h', '0px');
     } else if (ratio < 1.0) {
-      // Progressively expand from 10% to 85% of screen height
-      const targetPercent = Math.round(10 + ratio * 75);
-      flameOverlay.style.setProperty('--flame-height', `${targetPercent}vh`);
-      flameOverlay.classList.remove('inferno-active');
-      removeVignette();
+      // Dynamic height scaling smoothly from 12vh to 80vh
+      const h = Math.round(10 + ratio * 70);
+      overlayEl.style.setProperty('--flame-h', `${h}vh`);
+      removeModal();
+      isInfernoActive = false;
     } else {
       // 10+ posts reached: FULL INFERNO!
-      flameOverlay.style.setProperty('--flame-height', '100vh');
-      flameOverlay.classList.add('inferno-active');
-      triggerInferno();
+      overlayEl.style.setProperty('--flame-h', '100vh');
+      if (!isInfernoActive) {
+        isInfernoActive = true;
+        showInterventionModal();
+      }
     }
-  }
-
-  function resetFlamesToResting() {
-    const flameOverlay = document.getElementById('linkedin-flames-overlay');
-    if (flameOverlay) {
-      flameOverlay.style.setProperty('--flame-height', '0px');
-      flameOverlay.classList.remove('inferno-active');
-    }
-    removeVignette();
-    removeModal();
-    isInfernoActive = false;
-  }
-
-  // Trigger Full Inferno Modal & Screen Shake
-  function triggerInferno() {
-    if (isInfernoActive) return;
-    isInfernoActive = true;
-
-    // 1. Comic Screen Quake
-    document.body.classList.add('inferno-quake');
-    setTimeout(() => {
-      document.body.classList.remove('inferno-quake');
-    }, 600);
-
-    // 2. Fiery Vignette Border
-    addVignette();
-
-    // 3. Show Intervention Modal
-    showInterventionModal();
-  }
-
-  function addVignette() {
-    if (!document.getElementById('inferno-vignette')) {
-      const vignette = document.createElement('div');
-      vignette.id = 'inferno-vignette';
-      vignette.className = 'inferno-vignette';
-      document.body.appendChild(vignette);
-    }
-  }
-
-  function removeVignette() {
-    const vignette = document.getElementById('inferno-vignette');
-    if (vignette) vignette.remove();
   }
 
   function showInterventionModal() {
     if (document.getElementById('inferno-modal-overlay')) return;
-    isModalOpen = true;
 
-    const overlay = document.createElement('div');
-    overlay.id = 'inferno-modal-overlay';
-    overlay.innerHTML = `
+    const modal = document.createElement('div');
+    modal.id = 'inferno-modal-overlay';
+    modal.innerHTML = `
       <div class="inferno-modal-card">
-        <div class="inferno-demon-badge">🔥</div>
-        <h2 class="inferno-modal-title">
-          DOOMSCROLL INFERNO!
-          <br>
-          <span class="badge-highlight">${passedPosts.size} POSTS CONSUMED</span>
-        </h2>
-        <p class="inferno-modal-desc">
-          You have scrolled past <strong>${passedPosts.size} posts</strong> on LinkedIn!
-          Your time and attention are going up in smoke. It's time to choose:
-          contribute something meaningful or escape the feed!
+        <div style="font-size: 40px; margin-bottom: 4px;">🔥</div>
+        <h2>DOOMSCROLL INFERNO!</h2>
+        <p>
+          You've scrolled past <strong>${passedPosts.size} posts</strong> on LinkedIn!
+          Your screen is engulfed in flames. Will you post something and contribute to society, or escape the feed?
         </p>
-
         <div class="inferno-actions">
-          <button class="inferno-btn inferno-btn-contribute" id="btn-doom-contribute">
+          <button class="inferno-btn btn-post-society" id="doom-act-post">
             ✍️ Post Something & Contribute to Society
           </button>
-          <button class="inferno-btn inferno-btn-leave" id="btn-doom-leave">
+          <button class="inferno-btn btn-leave-linkedin" id="doom-act-leave">
             🚪 Get Off LinkedIn & Save Your Brain
           </button>
-          <button class="inferno-btn inferno-btn-snooze" id="btn-doom-snooze">
+          <button class="inferno-btn btn-snooze-flames" id="doom-act-snooze">
             💧 Extinguish with Water (5 min snooze)
           </button>
         </div>
       </div>
     `;
 
-    document.body.appendChild(overlay);
+    document.documentElement.appendChild(modal);
 
-    // Handle Button 1: Post Something & Contribute
-    document.getElementById('btn-doom-contribute').addEventListener('click', handleContributeAction);
+    // Button 1: Post something
+    document.getElementById('doom-act-post').addEventListener('click', () => {
+      removeModal();
+      passedPosts.clear();
+      isInfernoActive = false;
+      updateDisplay();
 
-    // Handle Button 2: Get Off LinkedIn
-    document.getElementById('btn-doom-leave').addEventListener('click', handleLeaveAction);
+      // Smoothly scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Handle Button 3: Extinguish / Snooze
-    document.getElementById('btn-doom-snooze').addEventListener('click', handleSnoozeAction);
+      // Click "Start a post"
+      setTimeout(() => {
+        const postBtn = document.querySelector(
+          'button.share-box-feed-entry__trigger, button[data-view-name="share-box-feed-entry-trigger"], div.share-box-feed-entry button, #mock-start-post'
+        );
+        if (postBtn) postBtn.click();
+        showToast('💡 Great choice! Create and contribute rather than just consume.');
+      }, 500);
+    });
+
+    // Button 2: Leave LinkedIn
+    document.getElementById('doom-act-leave').addEventListener('click', () => {
+      removeModal();
+      const exitUrl = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
+        ? chrome.runtime.getURL('exit.html')
+        : 'exit.html';
+      window.location.href = exitUrl;
+    });
+
+    // Button 3: Snooze
+    document.getElementById('doom-act-snooze').addEventListener('click', () => {
+      removeModal();
+      snoozeUntil = Date.now() + 5 * 60 * 1000;
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+        chrome.storage.sync.set({ snoozeUntil });
+      }
+      passedPosts.clear();
+      isInfernoActive = false;
+      updateDisplay();
+      showToast('💧 Sizzz! Flames doused for 5 minutes.');
+    });
   }
 
   function removeModal() {
     const modal = document.getElementById('inferno-modal-overlay');
     if (modal) modal.remove();
-    isModalOpen = false;
   }
 
-  // Action 1: Contribute to Society
-  function handleContributeAction() {
-    removeModal();
-    resetFlamesToResting();
-
-    // Reset passed count so user has a clean slate
-    passedPosts.clear();
-    isInfernoActive = false;
-
-    // Smoothly scroll to the very top to reach the post composer
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-
+  function showToast(msg) {
+    const toast = document.getElementById('doom-toast-msg');
+    if (!toast) return;
+    toast.innerText = msg;
+    toast.style.display = 'block';
     setTimeout(() => {
-      // Find LinkedIn "Start a post" button
-      const postTriggers = [
-        'button.share-box-feed-entry__trigger',
-        'button[data-view-name="share-box-feed-entry-trigger"]',
-        'div.share-box-feed-entry button',
-        '#mock-start-post', // Demo button
-        'button.artdeco-button--muted'
-      ];
-
-      let clicked = false;
-      for (const sel of postTriggers) {
-        const btn = document.querySelector(sel);
-        if (btn) {
-          btn.click();
-          clicked = true;
-          break;
-        }
-      }
-
-      // Show celebratory toast
-      const toast = document.getElementById('doom-celebrate-toast');
-      if (toast) {
-        toast.innerText = '💡 Excellent choice! Share your knowledge and contribute to society.';
-        toast.classList.add('toast-show');
-        setTimeout(() => toast.classList.remove('toast-show'), 4500);
-      }
-    }, 600);
+      toast.style.display = 'none';
+    }, 4000);
   }
 
-  // Action 2: Get Off LinkedIn
-  function handleLeaveAction() {
-    removeModal();
-
-    // Try opening exit.html or redirect
-    const exitUrl = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
-      ? chrome.runtime.getURL('exit.html')
-      : 'exit.html';
-
-    // If on LinkedIn, navigate away to the zen exit page
-    window.location.href = exitUrl;
-  }
-
-  // Action 3: Snooze for 5 minutes
-  function handleSnoozeAction() {
-    removeModal();
-    const snoozeDurationMs = 5 * 60 * 1000; // 5 minutes
-    config.snoozeUntil = Date.now() + snoozeDurationMs;
-
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-      chrome.storage.sync.set({ snoozeUntil: config.snoozeUntil });
-    }
-
-    resetFlamesToResting();
-    passedPosts.clear();
-    isInfernoActive = false;
-
-    const toast = document.getElementById('doom-celebrate-toast');
-    if (toast) {
-      toast.innerText = '💧 Sizzz! Flames doused. You have 5 minutes of peace.';
-      toast.classList.add('toast-show');
-      setTimeout(() => toast.classList.remove('toast-show'), 3500);
-    }
-  }
-
-  // Listen to messages from popup (e.g. Test Inferno, Reset Count)
+  // Communication with popup.js
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-      if (request.action === 'GET_STATUS') {
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+      if (msg.action === 'GET_STATUS') {
         sendResponse({
           scrolledPosts: passedPosts.size,
-          maxPosts: config.maxPosts,
+          maxPosts,
           isInferno: isInfernoActive
         });
-      } else if (request.action === 'TEST_INFERNO') {
-        // Mock reaching max posts to test immediately
-        for (let i = 0; i < config.maxPosts; i++) {
+      } else if (msg.action === 'TEST_INFERNO') {
+        for (let i = 0; i < maxPosts; i++) {
           passedPosts.add(`test-post-${i}`);
         }
         updateDisplay();
-        sendResponse({ success: true });
-      } else if (request.action === 'RESET_COUNTER') {
+        sendResponse({ ok: true });
+      } else if (msg.action === 'RESET_COUNTER') {
         passedPosts.clear();
         isInfernoActive = false;
-        resetFlamesToResting();
+        removeModal();
         updateDisplay();
-        sendResponse({ success: true });
+        sendResponse({ ok: true });
       }
       return true;
     });
   }
 
-  // Throttled scroll listener
-  let scrollTimeout = null;
-  window.addEventListener('scroll', () => {
-    if (scrollTimeout) return;
-    scrollTimeout = setTimeout(() => {
-      scrollTimeout = null;
-      evaluateScroll();
-    }, 60);
-  }, { passive: true });
+  // Passive scroll listener (never blocks page scrolling)
+  window.addEventListener('scroll', onScroll, { passive: true });
 
-  // DOM MutationObserver to detect infinite scrolling posts loaded dynamically
-  const observer = new MutationObserver((mutations) => {
-    let hasNewNodes = false;
-    for (const m of mutations) {
-      if (m.addedNodes.length > 0) {
-        hasNewNodes = true;
-        break;
-      }
-    }
-    if (hasNewNodes) {
-      evaluateScroll();
-    }
-  });
-
-  // Start initialization
-  function start() {
-    initOverlay();
-    evaluateScroll();
-    observer.observe(document.body, { childList: true, subtree: true });
-  }
-
+  // Initialize overlay cleanly when document is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start);
+    document.addEventListener('DOMContentLoaded', createOverlay);
   } else {
-    start();
+    createOverlay();
   }
 })();
