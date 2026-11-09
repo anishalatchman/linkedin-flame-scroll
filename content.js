@@ -547,20 +547,14 @@
     modal.innerHTML = `
       <div class="inferno-modal-card">
         <span class="inferno-demon-emoji">🔥</span>
-        <h2>DOOMSCROLL INFERNO!</h2>
+        <h2>DOOMSCROLL MAXED!</h2>
         <p>
           You have scrolled past <strong>${count} posts</strong> on LinkedIn!
           Your feed has consumed you. Will you contribute something to society or escape the screen?
         </p>
         <div class="inferno-actions">
           <button class="inferno-btn btn-post-society" id="doom-act-post">
-            ✍️ Post Something & Contribute to Society
-          </button>
-          <button class="inferno-btn btn-leave-linkedin" id="doom-act-leave">
-            🚪 Get Off LinkedIn & Save Your Brain
-          </button>
-          <button class="inferno-btn btn-snooze-flames" id="doom-act-snooze">
-            💧 Extinguish with Water (5 min snooze)
+            ✍️ Write a post instead
           </button>
         </div>
       </div>
@@ -568,7 +562,7 @@
 
     shadowRoot.appendChild(modal);
 
-    // Button 1: Post something
+    // Button 1: Post something — open LinkedIn's create post URL in a new tab
     modal.querySelector('#doom-act-post').addEventListener('click', () => {
       removeModal();
       scrolledPosts.clear();
@@ -576,39 +570,7 @@
       isInfernoActive = false;
       updateDisplay();
 
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      setTimeout(() => {
-        const postBtn = document.querySelector(
-          'button.share-box-feed-entry__trigger, button[data-view-name="share-box-feed-entry-trigger"], div.share-box-feed-entry button, #mock-start-post'
-        );
-        if (postBtn) postBtn.click();
-        showToast('💡 Great choice! Inspire and contribute to society.');
-      }, 500);
-    });
-
-    // Button 2: Leave LinkedIn
-    modal.querySelector('#doom-act-leave').addEventListener('click', () => {
-      removeModal();
-      let exitUrl = 'about:blank';
-      try {
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
-          exitUrl = chrome.runtime.getURL('exit.html');
-        }
-      } catch (_) {}
-      window.location.href = exitUrl;
-    });
-
-    // Button 3: Snooze
-    modal.querySelector('#doom-act-snooze').addEventListener('click', () => {
-      removeModal();
-      snoozeUntil = Date.now() + 5 * 60 * 1000;
-      safeStorageSet({ snoozeUntil });
-      scrolledPosts.clear();
-      maxScrollY = 0;
-      isInfernoActive = false;
-      updateDisplay();
-      showToast('💧 Sizzz! Flames doused for 5 minutes.');
+      window.open('https://www.linkedin.com/post/new/', '_blank');
     });
   }
 
