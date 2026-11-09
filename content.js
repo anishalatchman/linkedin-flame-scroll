@@ -1,5 +1,5 @@
 /**
- * LinkedIn Doomscroll Inferno 🔥
+ * LinkedIn Flames Scroller
  * Ultra-Resilient Dual-Engine Tracker (DOM + Scroll Distance) with Shadow DOM
  */
 
@@ -11,7 +11,7 @@
   if (window.__linkedinDoomInfernoLoaded) return;
   window.__linkedinDoomInfernoLoaded = true;
 
-  console.log('[Doomscroll Inferno] 🔥 Extension active with Dual-Engine Tracking!');
+  console.log('[LinkedIn Flames Scroller] Extension active');
 
   // Configuration
   let maxPosts = 10;
@@ -481,7 +481,7 @@
       if (rect.top < viewportHeight * 0.75 && rect.bottom > 0) {
         if (!scrolledPosts.has(postId)) {
           scrolledPosts.add(postId);
-          console.log(`[Doomscroll Inferno] Post counted (${scrolledPosts.size}/${maxPosts}):`, postId);
+          console.log(`[LinkedIn Flames Scroller] Post counted (${scrolledPosts.size}/${maxPosts}):`, postId);
         }
       }
 
@@ -489,7 +489,7 @@
       // (user scrolled back up and it re-entered from the top), remove it.
       if (rect.top > viewportHeight * 0.5 && scrolledPosts.has(postId)) {
         scrolledPosts.delete(postId);
-        console.log(`[Doomscroll Inferno] Post uncounted (${scrolledPosts.size}/${maxPosts}):`, postId);
+        console.log(`[LinkedIn Flames Scroller] Post uncounted (${scrolledPosts.size}/${maxPosts}):`, postId);
       }
     });
 
@@ -504,6 +504,17 @@
 
   // Update UI Elements
   function updateDisplay(distanceEstimate) {
+if (!window.location.pathname.startsWith('/feed')) {
+      if (overlayEl) {
+        overlayEl.style.setProperty('--flame-h', '0px');
+        overlayEl.style.display = 'none'; // <-- Add this to completely hide the overlay DOM element
+      }
+      if (meterPillEl) meterPillEl.style.display = 'none';
+      return;
+    } else {
+      if (overlayEl) overlayEl.style.display = 'flex'; // <-- Ensure it reappears on the feed
+    }
+
     if (!overlayEl || !shadowRoot) return;
 
     const isSnoozed = Date.now() < snoozeUntil;
@@ -554,17 +565,9 @@
     modal.id = 'inferno-modal-overlay';
     modal.innerHTML = `
       <div class="inferno-modal-card">
-        <span class="inferno-demon-emoji">🔥</span>
-        <h2>DOOMSCROLL MAXED!</h2>
-        <p>
-          You have scrolled past <strong>${count} posts</strong> on LinkedIn!
-          Your feed has consumed you. Will you contribute something to society or escape the screen?
-        </p>
-        <div class="inferno-actions">
-          <button class="inferno-btn btn-post-society" id="doom-act-post">
-            ✍️ Write a post instead
-          </button>
-        </div>
+        <h2>DOOMSCROLL MAXED OUT!</h2>
+        <p>You have scrolled past <strong>${count} posts</strong> on LinkedIn. Ready to create one yourself?</p>
+        <button class="inferno-btn" id="doom-act-post">Create new post</button>
       </div>
     `;
 
@@ -631,6 +634,34 @@
       });
     }
   }
+
+  // Track the current URL so we know when it changes
+let lastUrl = location.href;
+
+function checkPageNavigation() {
+  if (location.href === lastUrl) return;
+  lastUrl = location.href;
+
+  const isFeed = window.location.pathname.startsWith('/feed');
+
+  if (!isFeed) {
+    // Instantly collapse flames, hide bottom bar, and hide pill when leaving feed
+    if (overlayEl) {
+      overlayEl.style.setProperty('--flame-h', '0px');
+      overlayEl.style.display = 'none';
+    }
+    if (meterPillEl) {
+      meterPillEl.style.display = 'none';
+    }
+  } else {
+    // Restore display when returning to feed
+    if (overlayEl) overlayEl.style.display = 'flex';
+    if (meterPillEl) meterPillEl.style.display = 'flex';
+  }
+}
+
+// Check for SPA route changes every 500ms
+setInterval(checkPageNavigation, 500);
 
   // Message Handler for Popup
   try {
