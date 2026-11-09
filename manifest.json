@@ -41,7 +41,9 @@
     {
       "resources": [
         "icons/*",
-        "exit.html"
+        "exit.html",
+        "exit.css",
+        "exit.js"
       ],
       "matches": [
         "<all_urls>"

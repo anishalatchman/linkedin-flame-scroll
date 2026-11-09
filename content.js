@@ -217,7 +217,7 @@
     modal.id = 'inferno-modal-overlay';
     modal.innerHTML = `
       <div class="inferno-modal-card">
-        <div style="font-size: 44px; margin-bottom: 6px;">🔥</div>
+        <div class="inferno-demon-emoji">🔥</div>
         <h2>DOOMSCROLL INFERNO!</h2>
         <p>
           You have scrolled past <strong>${scrolledPosts.size} posts</strong> on LinkedIn!
