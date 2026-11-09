@@ -565,6 +565,7 @@ if (!window.location.pathname.startsWith('/feed')) {
     modal.id = 'inferno-modal-overlay';
     modal.innerHTML = `
       <div class="inferno-modal-card">
+        <span class="inferno-demon-emoji">🔥</span>
         <h2>DOOMSCROLL MAXED OUT!</h2>
         <p>You have scrolled past <strong>${count} posts</strong> on LinkedIn. Ready to create one yourself?</p>
         <button class="inferno-btn" id="doom-act-post">Create new post</button>
