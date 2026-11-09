@@ -1,4 +1,4 @@
-# LinkedIn Anti-Doomscroll
+# LinkedIn Flames Scroller
 
 A Chrome extension that turns your LinkedIn doomscrolling into flames once you scroll past 10 posts. Prompts you to create a post instead.
 
