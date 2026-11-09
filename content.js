@@ -1,6 +1,6 @@
 /**
  * LinkedIn Doomscroll Inferno 🔥
- * Robust, SPA-Resilient Post Tracker & Cartoon Flames
+ * Ultra-Resilient Dual-Engine Tracker (DOM + Scroll Distance) with Shadow DOM
  */
 
 (function () {
@@ -11,53 +11,359 @@
   if (window.__linkedinDoomInfernoLoaded) return;
   window.__linkedinDoomInfernoLoaded = true;
 
-  console.log('[Doomscroll Inferno] 🔥 Extension initialized. Watching feed...');
+  console.log('[Doomscroll Inferno] 🔥 Extension active with Dual-Engine Tracking!');
 
   // Configuration
   let maxPosts = 10;
   let flamesEnabled = true;
   let snoozeUntil = 0;
 
-  // Set-based tracking to survive LinkedIn DOM recycling & virtual scrolling
+  // Dual-Engine State
   const scrolledPosts = new Set();
+  let maxScrollY = 0;
   let isInfernoActive = false;
+
+  // Shadow DOM handles
+  let hostEl = null;
+  let shadowRoot = null;
   let overlayEl = null;
   let meterPillEl = null;
+  let toastEl = null;
 
-  // Load preferences from storage
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-    chrome.storage.sync.get(['maxPosts', 'flamesEnabled', 'snoozeUntil'], (res) => {
-      if (res.maxPosts) maxPosts = Number(res.maxPosts);
-      if (res.flamesEnabled !== undefined) flamesEnabled = res.flamesEnabled;
-      if (res.snoozeUntil) snoozeUntil = Number(res.snoozeUntil);
-      updateDisplay();
-    });
-
-    chrome.storage.onChanged.addListener((changes) => {
-      if (changes.maxPosts) maxPosts = Number(changes.maxPosts.newValue);
-      if (changes.flamesEnabled !== undefined) flamesEnabled = changes.flamesEnabled.newValue;
-      if (changes.snoozeUntil) snoozeUntil = Number(changes.snoozeUntil.newValue);
-      updateDisplay();
-    });
+  // Safe storage wrappers (zero "context invalidated" console errors)
+  function safeStorageGet(keys, cb) {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get(keys, (res) => {
+          if (chrome.runtime && chrome.runtime.lastError) {
+            fallbackGet(keys, cb);
+          } else {
+            cb(res || {});
+          }
+        });
+        return;
+      }
+    } catch (_) {}
+    fallbackGet(keys, cb);
   }
 
-  // Create minimal flame overlay
-  function createOverlay() {
-    if (document.getElementById('linkedin-flames-overlay')) return;
+  function fallbackGet(keys, cb) {
+    const res = {};
+    try {
+      keys.forEach((k) => {
+        const val = localStorage.getItem(`doom_${k}`);
+        if (val !== null) res[k] = JSON.parse(val);
+      });
+    } catch (_) {}
+    cb(res);
+  }
 
+  function safeStorageSet(items) {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set(items);
+      }
+    } catch (_) {}
+    try {
+      Object.entries(items).forEach(([k, v]) => {
+        localStorage.setItem(`doom_${k}`, JSON.stringify(v));
+      });
+    } catch (_) {}
+  }
+
+  // Load initial settings
+  safeStorageGet(['maxPosts', 'flamesEnabled', 'snoozeUntil'], (res) => {
+    if (res.maxPosts) maxPosts = Number(res.maxPosts);
+    if (res.flamesEnabled !== undefined) flamesEnabled = res.flamesEnabled;
+    if (res.snoozeUntil) snoozeUntil = Number(res.snoozeUntil);
+    updateDisplay();
+  });
+
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener((changes) => {
+        if (changes.maxPosts) maxPosts = Number(changes.maxPosts.newValue);
+        if (changes.flamesEnabled !== undefined) flamesEnabled = changes.flamesEnabled.newValue;
+        if (changes.snoozeUntil) snoozeUntil = Number(changes.snoozeUntil.newValue);
+        updateDisplay();
+      });
+    }
+  } catch (_) {}
+
+  // --------------------------------------------------------------------------
+  // Shadow DOM UI Construction (Zero DOM collisions & Zero CSS conflicts)
+  // --------------------------------------------------------------------------
+  function initShadowUI() {
+    if (document.getElementById('doomscroll-inferno-host')) return;
+
+    hostEl = document.createElement('div');
+    hostEl.id = 'doomscroll-inferno-host';
+    hostEl.style.cssText = 'all: initial; position: absolute; z-index: 2147483640;';
+
+    const targetParent = document.body || document.documentElement;
+    if (!targetParent) return;
+    targetParent.appendChild(hostEl);
+
+    shadowRoot = hostEl.attachShadow({ mode: 'open' });
+
+    // Injected Styles inside Shadow DOM
+    const style = document.createElement('style');
+    style.textContent = `
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      #linkedin-flames-overlay {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: var(--flame-h, 0px);
+        max-height: 100vh;
+        pointer-events: none;
+        z-index: 2147483640;
+        overflow: visible;
+        transition: height 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+      }
+
+      .flame-svg-strip {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      .flame-svg-strip svg {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        transform-origin: bottom center;
+      }
+
+      .flame-path-red {
+        fill: #E62200;
+        stroke: #1A0300;
+        stroke-width: 4px;
+        animation: cartoonSway1 2.4s ease-in-out infinite alternate;
+        transform-origin: bottom center;
+      }
+
+      .flame-path-orange {
+        fill: #FF7700;
+        animation: cartoonSway2 1.8s ease-in-out infinite alternate;
+        transform-origin: bottom center;
+      }
+
+      .flame-path-yellow {
+        fill: #FFD200;
+        animation: cartoonSway3 1.3s ease-in-out infinite alternate;
+        transform-origin: bottom center;
+      }
+
+      .flame-path-white {
+        fill: #FFF6A8;
+        animation: cartoonSway2 1.1s ease-in-out infinite alternate;
+        transform-origin: bottom center;
+      }
+
+      .flame-bottom-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 14px;
+        background: #E62200;
+        border-top: 3px solid #FFD200;
+        pointer-events: none;
+      }
+
+      @keyframes cartoonSway1 {
+        0% { transform: scaleY(0.96) skewX(-1.5deg); }
+        100% { transform: scaleY(1.04) skewX(1.5deg); }
+      }
+
+      @keyframes cartoonSway2 {
+        0% { transform: scaleY(1.04) skewX(2deg); }
+        100% { transform: scaleY(0.95) skewX(-2deg); }
+      }
+
+      @keyframes cartoonSway3 {
+        0% { transform: scaleY(0.92) skewX(-2.5deg); }
+        100% { transform: scaleY(1.08) skewX(2.5deg); }
+      }
+
+      #doom-meter-pill {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        z-index: 2147483645;
+        background: #18191B;
+        color: #FFFFFF;
+        border: 2px solid #FF7700;
+        border-radius: 999px;
+        padding: 6px 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+        cursor: pointer;
+        user-select: none;
+        pointer-events: auto;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1;
+        transition: transform 0.2s ease;
+      }
+
+      #doom-meter-pill:hover {
+        transform: translateY(-2px) scale(1.04);
+      }
+
+      .doom-meter-icon { font-size: 16px; }
+      .doom-meter-text { font-size: 12px; font-weight: 800; color: #FFD200; }
+
+      .doom-bar-bg {
+        width: 44px;
+        height: 6px;
+        background: #333333;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      .doom-bar-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #FFD200, #FF5500, #E60000);
+        transition: width 0.3s ease;
+      }
+
+      #inferno-modal-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(15, 3, 0, 0.75);
+        pointer-events: auto;
+        animation: modalFadeIn 0.3s ease-out;
+      }
+
+      @keyframes modalFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      .inferno-modal-card {
+        max-width: 500px;
+        width: 100%;
+        background: #FFFFFF;
+        border: 4px solid #1A0500;
+        border-radius: 20px;
+        padding: 28px 24px 24px;
+        text-align: center;
+        box-shadow: 8px 8px 0px #1A0500;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #1A0500;
+        animation: cardBounceIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+
+      @keyframes cardBounceIn {
+        from { transform: scale(0.85); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
+
+      .inferno-demon-emoji {
+        font-size: 44px;
+        margin-bottom: 6px;
+        display: block;
+      }
+
+      .inferno-modal-card h2 {
+        font-size: 24px;
+        font-weight: 900;
+        margin: 8px 0 12px;
+        color: #D31B00;
+      }
+
+      .inferno-modal-card p {
+        font-size: 15px;
+        line-height: 1.5;
+        color: #4A3E3D;
+        margin-bottom: 20px;
+      }
+
+      .inferno-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .inferno-btn {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 15px;
+        font-weight: 800;
+        border: 3px solid #1A0500;
+        border-radius: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 3px 3px 0px #1A0500;
+        transition: transform 0.1s ease;
+        text-decoration: none;
+      }
+
+      .inferno-btn:active {
+        transform: translate(2px, 2px);
+        box-shadow: 1px 1px 0px #1A0500;
+      }
+
+      .btn-post-society { background: #0073B1; color: #FFFFFF; }
+      .btn-leave-linkedin { background: #E62200; color: #FFFFFF; }
+      .btn-snooze-flames { background: #F0F4F8; color: #1A0500; font-size: 13px; padding: 8px; box-shadow: none; border-width: 2px; }
+
+      #doom-toast-msg {
+        position: fixed;
+        top: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2147483647;
+        background: #057642;
+        color: #FFFFFF;
+        border: 2px solid #02381F;
+        border-radius: 10px;
+        padding: 10px 20px;
+        font-weight: 700;
+        font-size: 14px;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+        pointer-events: none;
+        display: none;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+    `;
+    shadowRoot.appendChild(style);
+
+    // Overlay Element
     overlayEl = document.createElement('div');
     overlayEl.id = 'linkedin-flames-overlay';
-
     overlayEl.innerHTML = `
       <div class="flame-svg-strip">
         <svg viewBox="0 0 1200 200" preserveAspectRatio="none">
-          <!-- Red Outer Flame -->
           <path class="flame-path-red" d="M0,200 L0,120 C50,40 80,140 120,60 C160,140 200,20 240,110 C280,40 320,130 360,70 C400,10 440,120 480,50 C520,130 560,30 600,110 C640,40 680,120 720,60 C760,10 800,130 840,40 C880,110 920,50 960,120 C1000,30 1040,130 1080,60 C1120,20 1160,110 1200,100 L1200,200 Z" />
-          <!-- Orange Mid Flame -->
           <path class="flame-path-orange" d="M0,200 L0,140 C50,70 80,150 120,90 C160,150 200,50 240,130 C280,70 320,150 360,100 C400,40 440,140 480,80 C520,150 560,60 600,130 C640,70 680,140 720,90 C760,40 800,150 840,70 C880,130 920,80 960,140 C1000,60 1040,150 1080,90 C1120,50 1160,130 1200,120 L1200,200 Z" />
-          <!-- Yellow Core Flame -->
           <path class="flame-path-yellow" d="M0,200 L0,160 C50,110 80,170 120,130 C160,170 200,90 240,150 C280,110 320,170 360,130 C400,80 440,160 480,120 C520,170 560,100 600,150 C640,110 680,160 720,130 C760,80 800,170 840,110 C880,150 920,120 960,160 C1000,100 1040,170 1080,130 C1120,90 1160,150 1200,150 L1200,200 Z" />
-          <!-- Hot White Accents -->
           <ellipse cx="240" cy="170" rx="12" ry="20" class="flame-path-white" />
           <ellipse cx="480" cy="165" rx="12" ry="20" class="flame-path-white" />
           <ellipse cx="720" cy="170" rx="12" ry="20" class="flame-path-white" />
@@ -66,9 +372,9 @@
       </div>
       <div class="flame-bottom-bar"></div>
     `;
-    document.documentElement.appendChild(overlayEl);
+    shadowRoot.appendChild(overlayEl);
 
-    // Floating Doom Meter HUD (Bottom Left)
+    // Meter Pill
     meterPillEl = document.createElement('div');
     meterPillEl.id = 'doom-meter-pill';
     meterPillEl.innerHTML = `
@@ -78,49 +384,55 @@
         <div class="doom-bar-fill" id="doom-fill"></div>
       </div>
     `;
-    document.documentElement.appendChild(meterPillEl);
+    shadowRoot.appendChild(meterPillEl);
 
-    // Notification toast
-    const toast = document.createElement('div');
-    toast.id = 'doom-toast-msg';
-    document.documentElement.appendChild(toast);
+    // Toast
+    toastEl = document.createElement('div');
+    toastEl.id = 'doom-toast-msg';
+    shadowRoot.appendChild(toastEl);
   }
 
-  // Stable structural selectors for LinkedIn feed updates
+  // --------------------------------------------------------------------------
+  // Dual-Engine Post Tracking Architecture
+  // --------------------------------------------------------------------------
+
+  // Comprehensive selectors for LinkedIn feed posts & social wrappers
   const POST_SELECTORS = [
-    'div[data-id^="urn:li:"]',
-    'div[data-urn^="urn:li:"]',
-    'div.occludable-update',
+    'div[data-id*="urn:li:"]',
+    'div[data-urn*="urn:li:"]',
     'div.feed-shared-update-v2',
     'div[data-view-name="feed-full-update"]',
+    'div.occludable-update',
+    '.feed-shared-social-action-bar',
     'article',
     '.mock-post' // demo page
   ].join(',');
 
-  // Extract a unique identifier from a post container
-  function getPostIdentifier(el) {
-    // 1. Direct data-id (e.g., data-id="urn:li:activity:...")
+  function extractCanonicalId(el) {
+    if (!el) return null;
+
+    // 1. Check data-id
     const dataId = el.getAttribute('data-id');
-    if (dataId && dataId.startsWith('urn:li:')) return dataId;
+    if (dataId && dataId.includes('urn:li:')) return dataId;
 
-    // 2. Direct data-urn
+    // 2. Check data-urn
     const dataUrn = el.getAttribute('data-urn');
-    if (dataUrn && dataUrn.startsWith('urn:li:')) return dataUrn;
+    if (dataUrn && dataUrn.includes('urn:li:')) return dataUrn;
 
-    // 3. dataset.viewTrackingId
+    // 3. Check data-view-tracking-id
     if (el.dataset && el.dataset.viewTrackingId) return `tracking-${el.dataset.viewTrackingId}`;
 
-    // 4. Look inside element for child with data-id or data-urn
-    const childUrn = el.querySelector('[data-id^="urn:li:"], [data-urn^="urn:li:"]');
-    if (childUrn) {
-      const cid = childUrn.getAttribute('data-id') || childUrn.getAttribute('data-urn');
-      if (cid && cid.startsWith('urn:li:')) return cid;
+    // 4. Look inside child nodes
+    const child = el.querySelector('[data-id*="urn:li:"], [data-urn*="urn:li:"]');
+    if (child) {
+      const cid = child.getAttribute('data-id') || child.getAttribute('data-urn');
+      if (cid && cid.includes('urn:li:')) return cid;
     }
 
-    // 5. Look for link containing urn:li:activity / share / ugcPost
-    const postLink = el.querySelector('a[href*="urn:li:activity:"], a[href*="urn:li:share:"], a[href*="urn:li:ugcPost:"]');
-    if (postLink) {
-      const match = postLink.href.match(/urn:li:[a-zA-Z0-9_-]+:[0-9]+/);
+    // 5. Look for link to update URN
+    const link = el.querySelector('a[href*="urn:li:activity:"], a[href*="urn:li:share:"], a[href*="urn:li:ugcPost:"]');
+    if (link) {
+      const match = link.href.match(/urn:li:[a-zA-Z0-9_-]+:[0-9]+/);
       if (match) return match[0];
     }
 
@@ -131,60 +443,78 @@
     return null;
   }
 
-  // Scan feed elements and detect posts scrolled into or past view
-  function scanFeed() {
+  // Unified post evaluation (Engine 1: DOM URNs + Engine 2: Scroll Depth)
+  function scanFeed(e) {
     if (!flamesEnabled || Date.now() < snoozeUntil) {
       updateDisplay();
       return;
     }
 
-    const postElements = document.querySelectorAll(POST_SELECTORS);
-    let newlyScrolled = false;
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    // --- Engine 2: Cumulative Scroll Distance Tracker ---
+    // A typical LinkedIn post is roughly 500px tall
+    const currentScrollY = Math.max(
+      window.scrollY || 0,
+      document.documentElement.scrollTop || 0,
+      document.body.scrollTop || 0,
+      e && e.target && e.target.scrollTop ? e.target.scrollTop : 0
+    );
 
-    postElements.forEach((post) => {
-      const postId = getPostIdentifier(post);
+    if (currentScrollY > maxScrollY) {
+      maxScrollY = currentScrollY;
+    }
+    const distanceEstimate = Math.floor(maxScrollY / 500);
+
+    // --- Engine 1: DOM URN Post Tracker ---
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 800;
+    const elements = document.querySelectorAll(POST_SELECTORS);
+
+    elements.forEach((el) => {
+      // If it's a social action bar, get parent post
+      const postContainer = el.classList.contains('feed-shared-social-action-bar')
+        ? el.closest('div.feed-shared-update-v2, div.occludable-update, article, div[data-id], div[data-urn]') || el
+        : el;
+
+      const postId = extractCanonicalId(postContainer);
       if (!postId || scrolledPosts.has(postId)) return;
 
-      const rect = post.getBoundingClientRect();
-      // Only count genuine post blocks with measurable height
-      if (rect.height < 50) return;
-
-      // Count a post when it enters the user's active reading/scroll zone
-      // (top of post has scrolled above the lower 70% of the viewport)
-      if (rect.top < viewportHeight * 0.70 && rect.bottom > 0) {
+      const rect = postContainer.getBoundingClientRect();
+      // Count when top of post enters the upper 75% of viewport
+      if (rect.top < viewportHeight * 0.75 && rect.bottom > 0) {
         scrolledPosts.add(postId);
-        newlyScrolled = true;
-        console.log(`[Doomscroll Inferno] 🔥 New post scrolled past (${scrolledPosts.size}/${maxPosts}):`, postId);
+        console.log(`[Doomscroll Inferno] 🔥 Post detected (${scrolledPosts.size}/${maxPosts}):`, postId);
       }
     });
 
-    if (newlyScrolled) {
-      updateDisplay();
-    }
+    updateDisplay(distanceEstimate);
   }
 
-  // Update visual flame height & counter
-  function updateDisplay() {
-    if (!overlayEl) return;
+  function getEffectiveCount(distanceEstimate) {
+    const dist = distanceEstimate !== undefined ? distanceEstimate : Math.floor(maxScrollY / 500);
+    // Whichever engine found more posts wins!
+    return Math.max(scrolledPosts.size, dist);
+  }
+
+  // Update UI Elements
+  function updateDisplay(distanceEstimate) {
+    if (!overlayEl || !shadowRoot) return;
 
     const isSnoozed = Date.now() < snoozeUntil;
     if (!flamesEnabled || isSnoozed) {
       overlayEl.style.setProperty('--flame-h', '0px');
       if (meterPillEl) meterPillEl.style.display = isSnoozed ? 'flex' : 'none';
-      const text = document.getElementById('doom-text');
+      const text = shadowRoot.getElementById('doom-text');
       if (text && isSnoozed) text.innerText = 'Snoozed 💧';
       return;
     }
 
     if (meterPillEl) meterPillEl.style.display = 'flex';
 
-    const count = scrolledPosts.size;
+    const count = getEffectiveCount(distanceEstimate);
     const ratio = Math.min(count / maxPosts, 1.0);
 
-    const textEl = document.getElementById('doom-text');
-    const fillEl = document.getElementById('doom-fill');
-    const iconEl = document.getElementById('doom-icon');
+    const textEl = shadowRoot.getElementById('doom-text');
+    const fillEl = shadowRoot.getElementById('doom-fill');
+    const iconEl = shadowRoot.getElementById('doom-icon');
 
     if (textEl) textEl.innerText = `${count} / ${maxPosts} posts`;
     if (fillEl) fillEl.style.width = `${Math.round(ratio * 100)}%`;
@@ -195,8 +525,7 @@
     if (count === 0) {
       overlayEl.style.setProperty('--flame-h', '0px');
     } else if (ratio < 1.0) {
-      // Smoothly expand cartoon flames from 12vh to 82vh
-      const h = Math.round(12 + ratio * 70);
+      const h = Math.round(12 + ratio * 72);
       overlayEl.style.setProperty('--flame-h', `${h}vh`);
       removeModal();
       isInfernoActive = false;
@@ -205,22 +534,22 @@
       overlayEl.style.setProperty('--flame-h', '100vh');
       if (!isInfernoActive) {
         isInfernoActive = true;
-        showInterventionModal();
+        showInterventionModal(count);
       }
     }
   }
 
-  function showInterventionModal() {
-    if (document.getElementById('inferno-modal-overlay')) return;
+  function showInterventionModal(count) {
+    if (shadowRoot.getElementById('inferno-modal-overlay')) return;
 
     const modal = document.createElement('div');
     modal.id = 'inferno-modal-overlay';
     modal.innerHTML = `
       <div class="inferno-modal-card">
-        <div class="inferno-demon-emoji">🔥</div>
+        <span class="inferno-demon-emoji">🔥</span>
         <h2>DOOMSCROLL INFERNO!</h2>
         <p>
-          You have scrolled past <strong>${scrolledPosts.size} posts</strong> on LinkedIn!
+          You have scrolled past <strong>${count} posts</strong> on LinkedIn!
           Your feed has consumed you. Will you contribute something to society or escape the screen?
         </p>
         <div class="inferno-actions">
@@ -237,12 +566,13 @@
       </div>
     `;
 
-    document.documentElement.appendChild(modal);
+    shadowRoot.appendChild(modal);
 
     // Button 1: Post something
-    document.getElementById('doom-act-post').addEventListener('click', () => {
+    modal.querySelector('#doom-act-post').addEventListener('click', () => {
       removeModal();
       scrolledPosts.clear();
+      maxScrollY = 0;
       isInfernoActive = false;
       updateDisplay();
 
@@ -258,22 +588,24 @@
     });
 
     // Button 2: Leave LinkedIn
-    document.getElementById('doom-act-leave').addEventListener('click', () => {
+    modal.querySelector('#doom-act-leave').addEventListener('click', () => {
       removeModal();
-      const exitUrl = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
-        ? chrome.runtime.getURL('exit.html')
-        : 'exit.html';
+      let exitUrl = 'about:blank';
+      try {
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+          exitUrl = chrome.runtime.getURL('exit.html');
+        }
+      } catch (_) {}
       window.location.href = exitUrl;
     });
 
     // Button 3: Snooze
-    document.getElementById('doom-act-snooze').addEventListener('click', () => {
+    modal.querySelector('#doom-act-snooze').addEventListener('click', () => {
       removeModal();
       snoozeUntil = Date.now() + 5 * 60 * 1000;
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-        chrome.storage.sync.set({ snoozeUntil });
-      }
+      safeStorageSet({ snoozeUntil });
       scrolledPosts.clear();
+      maxScrollY = 0;
       isInfernoActive = false;
       updateDisplay();
       showToast('💧 Sizzz! Flames doused for 5 minutes.');
@@ -281,63 +613,39 @@
   }
 
   function removeModal() {
-    const modal = document.getElementById('inferno-modal-overlay');
+    if (!shadowRoot) return;
+    const modal = shadowRoot.getElementById('inferno-modal-overlay');
     if (modal) modal.remove();
   }
 
   function showToast(msg) {
-    const toast = document.getElementById('doom-toast-msg');
-    if (!toast) return;
-    toast.innerText = msg;
-    toast.style.display = 'block';
+    if (!toastEl) return;
+    toastEl.innerText = msg;
+    toastEl.style.display = 'block';
     setTimeout(() => {
-      toast.style.display = 'none';
+      toastEl.style.display = 'none';
     }, 4000);
   }
 
-  // Communication with popup.js
-  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-      if (msg.action === 'GET_STATUS') {
-        sendResponse({
-          scrolledPosts: scrolledPosts.size,
-          maxPosts,
-          isInferno: isInfernoActive
-        });
-      } else if (msg.action === 'TEST_INFERNO') {
-        for (let i = 0; i < maxPosts; i++) {
-          scrolledPosts.add(`test-post-${i}`);
-        }
-        updateDisplay();
-        sendResponse({ ok: true });
-      } else if (msg.action === 'RESET_COUNTER') {
-        scrolledPosts.clear();
-        isInfernoActive = false;
-        removeModal();
-        updateDisplay();
-        sendResponse({ ok: true });
-      }
-      return true;
-    });
+  // --------------------------------------------------------------------------
+  // Robust Multi-Target Event Listeners
+  // --------------------------------------------------------------------------
+  let isScrollScheduled = false;
+  function handleScroll(e) {
+    if (!isScrollScheduled) {
+      isScrollScheduled = true;
+      window.requestAnimationFrame(() => {
+        scanFeed(e);
+        isScrollScheduled = false;
+      });
+    }
   }
 
-  // 1. Throttled capture-phase scroll listener (catches scroll on window OR any scrollable feed container)
-  let isScrollScheduled = false;
-  window.addEventListener(
-    'scroll',
-    () => {
-      if (!isScrollScheduled) {
-        isScrollScheduled = true;
-        window.requestAnimationFrame(() => {
-          scanFeed();
-          isScrollScheduled = false;
-        });
-      }
-    },
-    { capture: true, passive: true }
-  );
+  // Listen in capture mode on window, document, and document.body
+  window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+  document.addEventListener('scroll', handleScroll, { capture: true, passive: true });
 
-  // 2. Debounced MutationObserver to detect infinite scroll injections cleanly
+  // Debounced MutationObserver for dynamic infinite scroll updates
   let mutationTimeout = null;
   const feedObserver = new MutationObserver(() => {
     if (mutationTimeout) clearTimeout(mutationTimeout);
@@ -346,8 +654,8 @@
     }, 250);
   });
 
-  function startObserver() {
-    createOverlay();
+  function start() {
+    initShadowUI();
     scanFeed();
 
     const targetNode = document.querySelector('main') || document.body;
@@ -359,10 +667,39 @@
     }
   }
 
-  // Initialize when DOM is ready
+  // Message Handler for Popup
+  try {
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+      chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+        if (msg.action === 'GET_STATUS') {
+          sendResponse({
+            scrolledPosts: getEffectiveCount(),
+            maxPosts,
+            isInferno: isInfernoActive
+          });
+        } else if (msg.action === 'TEST_INFERNO') {
+          for (let i = 0; i < maxPosts; i++) {
+            scrolledPosts.add(`test-post-${i}`);
+          }
+          maxScrollY = maxPosts * 500;
+          updateDisplay();
+          sendResponse({ ok: true });
+        } else if (msg.action === 'RESET_COUNTER') {
+          scrolledPosts.clear();
+          maxScrollY = 0;
+          isInfernoActive = false;
+          removeModal();
+          updateDisplay();
+          sendResponse({ ok: true });
+        }
+        return true;
+      });
+    }
+  } catch (_) {}
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startObserver);
+    document.addEventListener('DOMContentLoaded', start);
   } else {
-    startObserver();
+    start();
   }
 })();
