@@ -1,6 +1,6 @@
 /**
  * LinkedIn Doomscroll Inferno 🔥
- * Ultra-Lightweight Content Script (Zero-Lag, Non-Blocking)
+ * Robust, SPA-Resilient Post Tracker & Cartoon Flames
  */
 
 (function () {
@@ -11,13 +11,15 @@
   if (window.__linkedinDoomInfernoLoaded) return;
   window.__linkedinDoomInfernoLoaded = true;
 
+  console.log('[Doomscroll Inferno] 🔥 Extension initialized. Watching feed...');
+
   // Configuration
   let maxPosts = 10;
   let flamesEnabled = true;
   let snoozeUntil = 0;
 
-  // State
-  const passedPosts = new Set();
+  // Set-based tracking to survive LinkedIn DOM recycling & virtual scrolling
+  const scrolledPosts = new Set();
   let isInfernoActive = false;
   let overlayEl = null;
   let meterPillEl = null;
@@ -43,11 +45,9 @@
   function createOverlay() {
     if (document.getElementById('linkedin-flames-overlay')) return;
 
-    // Outer flames wrapper
     overlayEl = document.createElement('div');
     overlayEl.id = 'linkedin-flames-overlay';
 
-    // Single vector cartoon flame strip
     overlayEl.innerHTML = `
       <div class="flame-svg-strip">
         <svg viewBox="0 0 1200 200" preserveAspectRatio="none">
@@ -68,7 +68,7 @@
     `;
     document.documentElement.appendChild(overlayEl);
 
-    // Floating HUD Pill (Bottom Left, completely clear of LinkedIn chat)
+    // Floating Doom Meter HUD (Bottom Left)
     meterPillEl = document.createElement('div');
     meterPillEl.id = 'doom-meter-pill';
     meterPillEl.innerHTML = `
@@ -86,66 +86,85 @@
     document.documentElement.appendChild(toast);
   }
 
-  // Get strictly top-level main feed posts
-  function getFeedPosts() {
-    const main = document.querySelector('main, [role="main"], .scaffold-layout__main') || document;
-    const raw = main.querySelectorAll(
-      'div.feed-shared-update-v2, div[data-view-name="feed-full-update"], [data-urn*="activity:"], .mock-post'
-    );
+  // Stable structural selectors for LinkedIn feed updates
+  const POST_SELECTORS = [
+    'div[data-id^="urn:li:"]',
+    'div[data-urn^="urn:li:"]',
+    'div.occludable-update',
+    'div.feed-shared-update-v2',
+    'div[data-view-name="feed-full-update"]',
+    'article',
+    '.mock-post' // demo page
+  ].join(',');
 
-    const posts = [];
-    for (let i = 0; i < raw.length; i++) {
-      const el = raw[i];
-      // Skip if nested inside another post
-      if (!el.parentElement || !el.parentElement.closest('div.feed-shared-update-v2, div[data-view-name="feed-full-update"], .mock-post')) {
-        posts.push(el);
-      }
+  // Extract a unique identifier from a post container
+  function getPostIdentifier(el) {
+    // 1. Direct data-id (e.g., data-id="urn:li:activity:...")
+    const dataId = el.getAttribute('data-id');
+    if (dataId && dataId.startsWith('urn:li:')) return dataId;
+
+    // 2. Direct data-urn
+    const dataUrn = el.getAttribute('data-urn');
+    if (dataUrn && dataUrn.startsWith('urn:li:')) return dataUrn;
+
+    // 3. dataset.viewTrackingId
+    if (el.dataset && el.dataset.viewTrackingId) return `tracking-${el.dataset.viewTrackingId}`;
+
+    // 4. Look inside element for child with data-id or data-urn
+    const childUrn = el.querySelector('[data-id^="urn:li:"], [data-urn^="urn:li:"]');
+    if (childUrn) {
+      const cid = childUrn.getAttribute('data-id') || childUrn.getAttribute('data-urn');
+      if (cid && cid.startsWith('urn:li:')) return cid;
     }
-    return posts;
+
+    // 5. Look for link containing urn:li:activity / share / ugcPost
+    const postLink = el.querySelector('a[href*="urn:li:activity:"], a[href*="urn:li:share:"], a[href*="urn:li:ugcPost:"]');
+    if (postLink) {
+      const match = postLink.href.match(/urn:li:[a-zA-Z0-9_-]+:[0-9]+/);
+      if (match) return match[0];
+    }
+
+    // 6. Demo fallback
+    if (el.dataset && el.dataset.postId) return el.dataset.postId;
+    if (el.id && el.id.startsWith('demo-')) return el.id;
+
+    return null;
   }
 
-  // Lightweight scroll check using requestAnimationFrame
-  let isCheckingScroll = false;
-  function onScroll() {
-    if (isCheckingScroll) return;
-    isCheckingScroll = true;
-
-    window.requestAnimationFrame(() => {
-      checkPostsScrolled();
-      isCheckingScroll = false;
-    });
-  }
-
-  function checkPostsScrolled() {
+  // Scan feed elements and detect posts scrolled into or past view
+  function scanFeed() {
     if (!flamesEnabled || Date.now() < snoozeUntil) {
-      if (overlayEl) overlayEl.style.setProperty('--flame-h', '0px');
+      updateDisplay();
       return;
     }
 
-    // Require actual scrolling beyond page top
-    if (window.scrollY < 120) return;
+    const postElements = document.querySelectorAll(POST_SELECTORS);
+    let newlyScrolled = false;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
 
-    const posts = getFeedPosts();
-    let countChanged = false;
+    postElements.forEach((post) => {
+      const postId = getPostIdentifier(post);
+      if (!postId || scrolledPosts.has(postId)) return;
 
-    for (let i = 0; i < posts.length; i++) {
-      const el = posts[i];
-      const id = el.getAttribute('data-urn') || el.getAttribute('data-id') || el.dataset.postId || `p-${i}`;
-      if (passedPosts.has(id)) continue;
+      const rect = post.getBoundingClientRect();
+      // Only count genuine post blocks with measurable height
+      if (rect.height < 50) return;
 
-      const rect = el.getBoundingClientRect();
-      // Only count if post has scrolled past top of the screen
-      if (rect.bottom < 80 && rect.height > 60) {
-        passedPosts.add(id);
-        countChanged = true;
+      // Count a post when it enters the user's active reading/scroll zone
+      // (top of post has scrolled above the lower 70% of the viewport)
+      if (rect.top < viewportHeight * 0.70 && rect.bottom > 0) {
+        scrolledPosts.add(postId);
+        newlyScrolled = true;
+        console.log(`[Doomscroll Inferno] 🔥 New post scrolled past (${scrolledPosts.size}/${maxPosts}):`, postId);
       }
-    }
+    });
 
-    if (countChanged) {
+    if (newlyScrolled) {
       updateDisplay();
     }
   }
 
+  // Update visual flame height & counter
   function updateDisplay() {
     if (!overlayEl) return;
 
@@ -160,10 +179,9 @@
 
     if (meterPillEl) meterPillEl.style.display = 'flex';
 
-    const count = passedPosts.size;
+    const count = scrolledPosts.size;
     const ratio = Math.min(count / maxPosts, 1.0);
 
-    // Update meter text and progress bar
     const textEl = document.getElementById('doom-text');
     const fillEl = document.getElementById('doom-fill');
     const iconEl = document.getElementById('doom-icon');
@@ -177,8 +195,8 @@
     if (count === 0) {
       overlayEl.style.setProperty('--flame-h', '0px');
     } else if (ratio < 1.0) {
-      // Dynamic height scaling smoothly from 12vh to 80vh
-      const h = Math.round(10 + ratio * 70);
+      // Smoothly expand cartoon flames from 12vh to 82vh
+      const h = Math.round(12 + ratio * 70);
       overlayEl.style.setProperty('--flame-h', `${h}vh`);
       removeModal();
       isInfernoActive = false;
@@ -199,11 +217,11 @@
     modal.id = 'inferno-modal-overlay';
     modal.innerHTML = `
       <div class="inferno-modal-card">
-        <div style="font-size: 40px; margin-bottom: 4px;">🔥</div>
+        <div style="font-size: 44px; margin-bottom: 6px;">🔥</div>
         <h2>DOOMSCROLL INFERNO!</h2>
         <p>
-          You've scrolled past <strong>${passedPosts.size} posts</strong> on LinkedIn!
-          Your screen is engulfed in flames. Will you post something and contribute to society, or escape the feed?
+          You have scrolled past <strong>${scrolledPosts.size} posts</strong> on LinkedIn!
+          Your feed has consumed you. Will you contribute something to society or escape the screen?
         </p>
         <div class="inferno-actions">
           <button class="inferno-btn btn-post-society" id="doom-act-post">
@@ -224,20 +242,18 @@
     // Button 1: Post something
     document.getElementById('doom-act-post').addEventListener('click', () => {
       removeModal();
-      passedPosts.clear();
+      scrolledPosts.clear();
       isInfernoActive = false;
       updateDisplay();
 
-      // Smoothly scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      // Click "Start a post"
       setTimeout(() => {
         const postBtn = document.querySelector(
           'button.share-box-feed-entry__trigger, button[data-view-name="share-box-feed-entry-trigger"], div.share-box-feed-entry button, #mock-start-post'
         );
         if (postBtn) postBtn.click();
-        showToast('💡 Great choice! Create and contribute rather than just consume.');
+        showToast('💡 Great choice! Inspire and contribute to society.');
       }, 500);
     });
 
@@ -257,7 +273,7 @@
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
         chrome.storage.sync.set({ snoozeUntil });
       }
-      passedPosts.clear();
+      scrolledPosts.clear();
       isInfernoActive = false;
       updateDisplay();
       showToast('💧 Sizzz! Flames doused for 5 minutes.');
@@ -284,18 +300,18 @@
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (msg.action === 'GET_STATUS') {
         sendResponse({
-          scrolledPosts: passedPosts.size,
+          scrolledPosts: scrolledPosts.size,
           maxPosts,
           isInferno: isInfernoActive
         });
       } else if (msg.action === 'TEST_INFERNO') {
         for (let i = 0; i < maxPosts; i++) {
-          passedPosts.add(`test-post-${i}`);
+          scrolledPosts.add(`test-post-${i}`);
         }
         updateDisplay();
         sendResponse({ ok: true });
       } else if (msg.action === 'RESET_COUNTER') {
-        passedPosts.clear();
+        scrolledPosts.clear();
         isInfernoActive = false;
         removeModal();
         updateDisplay();
@@ -305,13 +321,48 @@
     });
   }
 
-  // Passive scroll listener (never blocks page scrolling)
-  window.addEventListener('scroll', onScroll, { passive: true });
+  // 1. Throttled capture-phase scroll listener (catches scroll on window OR any scrollable feed container)
+  let isScrollScheduled = false;
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (!isScrollScheduled) {
+        isScrollScheduled = true;
+        window.requestAnimationFrame(() => {
+          scanFeed();
+          isScrollScheduled = false;
+        });
+      }
+    },
+    { capture: true, passive: true }
+  );
 
-  // Initialize overlay cleanly when document is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', createOverlay);
-  } else {
+  // 2. Debounced MutationObserver to detect infinite scroll injections cleanly
+  let mutationTimeout = null;
+  const feedObserver = new MutationObserver(() => {
+    if (mutationTimeout) clearTimeout(mutationTimeout);
+    mutationTimeout = setTimeout(() => {
+      scanFeed();
+    }, 250);
+  });
+
+  function startObserver() {
     createOverlay();
+    scanFeed();
+
+    const targetNode = document.querySelector('main') || document.body;
+    if (targetNode) {
+      feedObserver.observe(targetNode, {
+        childList: true,
+        subtree: true
+      });
+    }
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startObserver);
+  } else {
+    startObserver();
   }
 })();
